@@ -1,0 +1,182 @@
+---
+title: \Large __Performance of 2-class Classifiers on Data for which Labels are Missing by a Non-Random Mechanism__
+author: "Amy Crawford"
+date: "March 30, 2017"
+output:
+  pdf_document: default
+bibliography: 
+- ccbib.bib
+header-includes:
+- \usepackage{setspace}
+- \doublespacing
+- \usepackage{bigints}
+fontsize: 12pt
+---
+\newcommand\ddfrac[2]{\frac{\displaystyle #1}{\displaystyle #2}} 
+
+
+
+\begin{center}
+\footnotesize
+\begin{tabular}{l r c c}
+    & & \multicolumn{2}{ c }{Reference} \\
+    & & functional & requires attention \\ \cline{3-4} 
+    Prediction & \multicolumn{1}{r|}{functional} & 96 & 37 \\
+    & \multicolumn{1}{r|}{requires attention} & 59 & 108 \\
+\end{tabular}
+\begin{tabular}{llrl}
+    &&& \\
+    &  &   Kappa :&0.3624\\
+    &  &   Accuracy :&0.68\\
+    &  &   Sensitivity :&0.6194 \\               
+    &  &   Specificity :&0.7448\\
+\end{tabular}
+\end{center}
+
+\vspace{1cm}
+
+
+
+
+
+We substitute our own functions and parameters in the algorithm as follows:  
+
+Step 1.   
+
+
+
+> Compute an __association matrix__ $W_{m \times n} := [w_{ji}]_{j=1;i=1}^{m,n}$ that for $X_i=(X_{i1}, \hdots, X_{ip})'\in \mathcal{T}$ and  $U_j=(U_{j1}, \hdots, U_{jp})'\in \mathcal{P}$, 
+
+$$  
+w_{ji}=\mbox{exp}\left \{ - \ddfrac{\sum_{k=1}^{p}d_k^2(U_{jk}, X_{ik})}{\lambda}   \right \},
+$$
+ 
+ 
+ 
+> where $\lambda$ can be thought of as a tuning parameter, and $d_k(u,x)$ denotes a distance (or dissimilarity) function of $u$ and $x$ on the $k^{th}$ coordinate of the feature vector. That is, for standardized numeric features `amount_tsh` and `pgs_height` ($k = 1,2$) use Euclidean distance $$d_{k=1,2}(u,x) = \sqrt{(u_{jk} - x_{ik})^2}.$$ 
+   
+> All other features ($k = 3, \hdots, 13$) are categorical. Use the following weighted degree-of-difference measure to assess dissimilarity for these features [@hastie_tibshirani_friedman].    
+\[ d_{k = 3, \hdots, 13}(u,x) = \tau \mbox{ I}[u_{jk} \ne x_{ik}] = \tau \left\{
+\begin{array}{ll}
+      1 & u_{jk} \ne x_{ik} \\
+      0 & u_{jk} = x_{ik} \\
+\end{array} 
+\right., \]
+where $\tau$ is the weight we will give to a pair of dissimilar categorical features at every coordinate $k = 3, \hdots, 13$.
+Thus, we compute each $[w_{ji}]_{j=1;i=1}^{m,n}$ as  
+$$  
+w_{ji}=\mbox{exp}\left \{ - \ddfrac{\sum_{k=1}^{2}(u_{jk} - x_{ik})^2 + \tau^2\sum_{k=3}^{13}\mbox{ I}[u_{jk} \ne x_{ik}]}{\lambda}   \right \}.
+$$
+
+   
+   
+Step 2.  
+
+
+> Compute the __selection probability matrix__ $P_{m \times n} := [p_{ji}]_{j=1;i=1}^{m,n}$ with
+\[
+p_{ji} = \frac{w_{ji}}{\sum_{i = 1}^{n} w_{ji}}.
+\]
+
+
+
+Step 3.  
+
+> Fix B $>0$, and for the $b^{th}$ iteration where $b=1,\hdots,B$, do the following.   
+
+$\,$ (a.)   
+
+\vspace{-10.8mm}
+> For each $U_j \in \mathcal{P}(j = 1, \hdots, m)$, sample $q<n$ observations from $\mathcal{T}$ with replacement based on the selection probability that
+\[
+\left(Y_{j,l}^b, X_{j,l}^b\right) := (Y_i^*, X_i^*)|\mathcal{T}\stackrel{iid}{\sim}\{p_{ji}\}_{i=1}^{n}
+\]
+> for $l = 1, \hdots, q$ ($X^*$ denotes a sampling version of $X$), so that we obtain a __selected active set__ (i.e. a $b^{th}$ training set of size $mq$ for predictions on $\mathcal{P}$)
+\[  
+\mathcal{S}_b^q = \left \{ \left(Y_{j,l}^b, X_{j,l}^b \right) \right\}_{j=1,l=1}^{m,q}.
+\]
+
+$\,$ (b.)   
+
+\vspace{-10.8mm}  
+>  Train an SVM classifier on the selected active set $\mathcal{S}_b^q$ by which we make predictions $\hat{V}_{j,b}$ for observations in $\mathcal{P}$.
+
+
+Step 4.
+
+> Obtain the predictions for observations in $\mathcal{P}$ by the majority voting that   
+\[  
+\hat{V}_j^{ASSC} = \mbox{arg max}\sum_{b=1}^{B} I\left[\hat{V}_{j,b} = c \right]
+\]
+
+> for $j = 1, \hdots, m$. The collection $\mathcal{S}_B(m,n,q) = \cup_{b=1}^{B}\mathcal{S}_b^q$ is called the __active set__ for $\mathcal{T}$ with respect to $\mathcal{P}$.
+
+
+```{r}
+### STEP 0
+# create small workable data sets
+# train_logistic_regression_reorder <- subset(train_logistic_regression, select = c(2:14, status_group))
+# test_logistic_regression_target <- cbind(test_logistic_regression, test_y)
+# train_small <- train_logistic_regression_reorder[sample(nrow(train_logistic_regression_reorder), 100),]
+# test_small <- test_logistic_regression_target[sample(nrow(test_logistic_regression_target), 100),]
+# 
+# train_small <- train_logistic_regression_reorder
+# test_small <- test_logistic_regression_target
+# 
+# 
+# 
+# 
+# ### STEP 1
+# # dissimilarity/distance function
+# tau <- 1.5  # set weight for categorical variable distance peice of function
+# d <- function(u, x){
+#   # categorical variables (11) <-  # of variables that don't match
+#   # continuous variables (2) <- euclidean distance
+#   # combine linearly and give a wieght to the categorical variable distance so that it has a reasonable amount of say in the distance between the two cases being compared
+#   dissimilarity <- sum((u[1:2]-x[1:2])^2) + tau^2*sum(u[3:13] != x[3:13])
+# }
+# 
+# # w is the "association matrix" higher values in this matrix indicate a higher association between the train and test cases being compared.
+# w <- matrix(nrow = nrow(test_small), ncol = nrow(train_small))
+# for(j in 1:nrow(test_small)){
+#   for(i in 1:nrow(train_small)){
+#     w[j,i] <- exp(-d(subset(test_small[j,], select = -c(test_y)), subset(train_small, select = -c(status_group))[i,])/2)
+#   }
+# }
+# 
+
+
+
+```
+
+
+Some words [@DrivenData] more words 
+sdf asdfkj blah blah more things you know and then there's [@shapefile] and there is also this guy's book [@james_witten_hastie_tibshirani] and [@hastie_tibshirani_friedman]   [@sbv]  [@dataset_shift]    [@rick]  Zhou [2013]
+
+
+\begin{singlespacing}
+
+# REFERENCES
+
+
+
+
+ put construction year and population back into model and see if they are significant. do it both ways and see what you can say about whether it matters. It might help modeling but hurt extrapolating.... will probably get better fits on the corner that extrapolate badly off the corner.
+Error: unexpected symbol in "put construction"
+cross validation error rates
+Error: unexpected symbol in "cross validation"
+is CV error rate at all close to the actual error rate outside the corner?
+Error: unexpected symbol in "is CV"
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,518 @@
+---
+title: "Data Exploration"
+author: "Amy Crawford"
+date: "January 22, 2017"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+# Origin of the Data
+```{r, echo = F, message = F, warning = F}
+require(ggplot2)
+require(dplyr)
+library(randomForest)
+library(caret)
+library(sampling)
+set.seed(42)
+options(scipen = 999)
+
+# Define train_values_url
+train_values_url <- "http://s3.amazonaws.com/drivendata/data/7/public/4910797b-ee55-40a7-8668-10efd5c1b960.csv"
+
+# Import train_values
+train_values <- read.csv(train_values_url)
+
+# Define train_labels_url
+train_labels_url <- "http://s3.amazonaws.com/drivendata/data/7/public/0bf8bc6e-30d0-4c50-956a-603fc693d966.csv"
+
+# Import train_labels
+train_labels <- read.csv(train_labels_url)
+
+train <- merge(train_labels, train_values, by = "id")
+
+# combine labels for 2class classification problem
+train$status_group[train$status_group == "functional needs repair"] <- "non functional"
+train$status_group <- droplevels(train$status_group)
+```
+The data come from a data science competition on the website [DrivenData.org](https://www.drivendata.org/competitions/7/pump-it-up-data-mining-the-water-table/page/23/).
+
+\vspace{-3mm}
+
+> _DrivenData brings the transformative power of data science to organizations attacking our world’s greatest challenges.
+We find real world questions where data science can have positive social impact, then run online modeling competitions for data scientists to develop the best models to solve them._
+
+\vspace{-3mm}
+
+This competition in particular is a three-class classification problem designed as an excercise for learning and exploration for intermediate level participants.   Data were collected on 39,135 water pumps in Tanzania. The primary task of the posted competition is to predict which pumps are functional, which need some repairs, and which don't work at all.
+
+\vspace{5mm}
+The data table has 39,135 rows and 40 columns. The column names and descriptions taken from the website are pictured below:  
+
+\vspace{3mm}  
+
+\includegraphics[width = 350pt]{Features1}  
+
+\includegraphics[width = 350pt]{Features2}  
+
+\vspace{3mm}
+
+# Framing the Problem
+Objective: Conduct a binary classification on an unbalanced data set in which labels are missing according to a specific mechanism (or restriction).  
+
+So, consider that until very recently the organization responsible for monitering the status of the wells had a restricted amount of resources (money, time, employees) and could only moniter old wells (>20 years old) that have a considerably large surrounding population (>200 people). The organization has data on the features of all pumps, but only has pumps in these currently monitered areas are labeled as functional, in need of repair, or not working at all.  
+  
+  
+Now, suppose they have gained the resources to hire one new employee who will devote their time to monitering and managing wells with less densly populated surrounding areas. The organization needs to use this employee in a very stragic way. There are many, many wells that will fall under this employee's jurisdiction and they need to target pumps that are likely broken, or need repairs. The organzation doesn't want to waste time sending this employee to check on pumps that are functional. Using what we know about the status of the pumps that have been monitered, we need to predict which pumps in the less densly populated areas will require the attention of the new employee (pumps that *"need repair"*, or are *"broken"*). I will consider these pumps together in one category - not functional.
+
+
+```{r, echo = F}
+# data is the subset of train without any missing population information
+data <- train[train$population != 0,]
+```
+
+
+
+
+## Data Cleaning
+```{r, message = F, warning = F}
+# Change date_recorded from a factor to a date
+data$date_recorded <- as.Date(data$date_recorded)
+
+# Change region code and district code from integers to factors
+data$region_code <- factor(data$region_code)
+data$district_code <- factor(data$district_code)
+
+# Modify construction_year values so that the oldest wells start at year 0 and count up years from there
+min_year <- 1960
+data$construction_year <- data$construction_year - min_year
+# Interpolate missing construction_year values
+data$construction_year[data$construction_year < 0] <- median(data$construction_year[data$construction_year > 0])
+
+# Interpolate missing gps_height values
+data$gps_height[data$gps_height == 0] <- median(data$gps_height[data$gps_height>0])
+```
+
+
+
+
+## "Corner" the dataset to conform with the problem.
+```{r, warning=F, message = F, echo = F, fig.height=3, fig.width=7}
+
+###### Analyze population variable
+ggplot(data) + geom_histogram(aes(x = population, y = ..density.., fill = status_group)) + xlim(0,2000)
+
+###### Analyze construction_year variable
+qplot(construction_year, data = data, geom = "bar", fill = status_group) + theme(legend.position = "top")
+
+# We only have responses for new (less than 20yo) pumps in highly populated areas
+data$corner <- ifelse(data$population > 200 & data$construction_year < 20, 1, 0)
+```
+
+Size of training data set is `r sum(data$corner)` which is `r 100*sum(data$corner)/nrow(data)`% of the full data set.   
+
+
+
+
+Percent non-functional in test (lower population density & newer pumps)
+```{r, echo = F, message = F, warning = F}
+table(data$corner, data$status_group)[1,2]/sum(data$corner == 0)
+```
+
+Percent non-functional in train (higher population density & older pumps)
+```{r, echo = F, message = F, warning = F}
+table(data$corner, data$status_group)[2,2]/sum(data$corner == 1)
+```
+
+
+
+
+## Visualizing the country
+```{r, echo = F, message = F, warning = F}
+ggplot(data = train[train$latitude != 0 & train$longitude != 0,]) + geom_point(aes(x = longitude, y = latitude, colour = status_group)) + ggtitle("Including rows with missing population data")
+
+ggplot(data = data[data$latitude != 0 & data$longitude != 0,]) + geom_point(aes(x = longitude, y = latitude, colour = status_group)) + ggtitle("Excluding rows with missing population data")
+
+ggplot(data = data[data$latitude != 0 & data$longitude != 0,]) + geom_point(aes(x = longitude, y = latitude, colour = status_group)) + facet_grid(~corner) + ggtitle("Excluding rows with missing population data")
+```
+
+
+
+
+## Feature Selection and Engineering
+```{r, echo = F, message = F, warning = F}
+#Not sure what num_private is, and it didn't improve the model.
+data$num_private <- NULL
+
+#Removed because only one unique value
+data$recorded_by <- NULL
+
+#Removed because there were too many unique values
+data$wpt_name <- NULL
+
+#Removed because both are similar to extraction_type_class
+data$extraction_type_group <- NULL
+data$extraction_type <- NULL
+
+#Removed because similar to payment
+data$payment_type <- NULL
+
+#Removed because similar to quality_group.
+data$water_quality <- NULL
+
+#Removed because similar to source_type (source = more specific version, source_class = less specific version)
+data$source <- NULL
+data$source_class <- NULL 
+
+#????
+#data$scheme_management<-NULL
+
+#Removed because all are LOCATION variables. Long and lat should be sufficient to account for location.
+data$district_code <- NULL
+data$region <- NULL
+data$region_code <- NULL
+data$subvillage <- NULL
+data$ward <- NULL
+
+#Removed because similar to waterpoint_type
+data$waterpoint_type_group <- NULL
+
+#Removed because duplicate of quantity
+data$quantity_group <- NULL
+
+#Removed because too many unique values. Another option is to group the installers to reduce the number of unique values
+data$installer <- NULL
+
+# Removed because too many unique values.
+data$funder <- NULL
+data$scheme_name <- NULL
+data$lga <- NULL
+
+# Combine "None" and "Other" levels of scheme_management
+data[data$scheme_management %in% c("None"),]$scheme_management <- "Other"
+data$scheme_management <- droplevels(data$scheme_management)
+#table(data$scheme_management, data$status_group)
+```
+
+
+
+
+## Visualizing a few variables
+```{r, warning=F, message = F, echo = F, fig.height=3, fig.width=7}
+############################################################################## 
+# stacked barplots for a few categorical variables
+qplot(quantity, data=data, geom="bar", fill=status_group) + 
+  theme(legend.position = "right")
+
+qplot(quality_group, data=data, geom="bar", fill=status_group) + 
+  theme(legend.position = "right")
+
+qplot(extraction_type_class, data=data, geom="bar", fill=status_group) + theme(legend.position = "right")
+
+qplot(payment, data=data, geom="bar", fill=status_group) + 
+  theme(legend.position = "right")
+
+qplot(source_type, data=data, geom="bar", fill=status_group) + 
+  theme(legend.position = "right")
+
+qplot(waterpoint_type, data=data, geom="bar", fill=status_group) + 
+  theme(legend.position = "right")
+
+qplot(scheme_management, data=data, geom="bar", fill=status_group) + 
+  theme(legend.position = "right")
+
+# Two ways to look at gps_height
+qplot(x = status_group, y = gps_height, data = data, geom = "boxplot", fill = status_group)
+qplot(x = gps_height, y = ..density.., data = data, geom = "density", fill = status_group, alpha = 0.3)
+```
+
+
+## Split into train and test sets
+```{r, echo = F, message = F, warning = F}
+# get rid of id, corner, population, and construction_year columns
+data$id <- NULL
+data$population <- NULL
+data$construction_year <- NULL
+
+#Separate data into train and test set
+train <- data[data$corner == 1,]
+test <- data[data$corner == 0,]
+
+train$corner <- NULL
+test$corner <- NULL
+
+test_y <- test$status_group
+test$status_group <- NULL
+
+
+train_logistic_regression <- train
+train_logistic_regression$longitude <- NULL
+train_logistic_regression$latitude <- NULL
+train_logistic_regression$management <- NULL
+train_logistic_regression$date_recorded <- NULL
+train_logistic_regression <- droplevels(train_logistic_regression)
+
+test_logistic_regression <- test
+test_logistic_regression$longitude <- NULL
+test_logistic_regression$latitude <- NULL
+test_logistic_regression$management <- NULL
+test_logistic_regression$date_recorded <- NULL
+test_logistic_regression[test$extraction_type_class %in% "rope pump",]$extraction_type_class <- "other"
+test_logistic_regression[test$waterpoint_type %in% "dam",]$waterpoint_type <- "other"
+test_logistic_regression <- droplevels(test_logistic_regression)
+
+
+###### take 
+
+
+
+names(train_logistic_regression)
+```
+
+Dimension of training data set is `r dim(train_logistic_regression)`.     
+
+Dimension of testing data set is `r dim(test_logistic_regression)`.
+
+\pagebreak 
+
+## LOGISTIC REGRESSION
+```{r, echo = F, message = F, warning = F}
+set.seed(1)
+model_logistic_regression <- glm(status_group ~.,family=binomial(link='logit'),data=train_logistic_regression)
+# summary(model_logistic_regression)
+anova(model_logistic_regression, test = "Chisq")
+
+preds_logistic_regression <- predict(model_logistic_regression, newdata = test_logistic_regression) #predict 
+preds_logistic_regression_factor <- ifelse(preds_logistic_regression < 0, "functional", "non functional") #convert numeric predictions to factor to match response variable
+confusionMatrix(preds_logistic_regression_factor, test_y)
+```
+
+\pagebreak 
+
+## SVM
+```{r, echo = F, message = F, warning = F}
+set.seed(1)
+require(e1071)
+require(caret)
+
+model_svm <- svm(status_group ~ ., data=train_logistic_regression, kernel="radial", cost=10)
+# summary(model_svm) 
+
+preds_svm <- predict(model_svm, newdata = test_logistic_regression) #predict 
+confusionMatrix(preds_svm, test_y) 
+```
+
+
+
+
+
+
+\pagebreak 
+
+## RANDOM FOREST
+This model develops many trees by doing the following:
+  
+1. Each tree is built on a bootstrapped sample of rows. For each tree: at each node, radomly select a subset (mtry) of the input features and find an optimal single split.
+2. Repeat #1 at each node up to a fixed depth or until no single split improvement is possible without creating a split resulting in a small number of cases (nodesize), i.e. each split must maintain 6 or more observations on each side of it to be a valid split..  
+3. Many trees are built in this fashion, then aggregated. This method can be thought of as an elaboration of a "bagging" (the name for bootstrap aggregating).
+  
+Note that the number of trees built under the algorithm above (ntree) should not be set too small to ensure that every input row gets predicted at least a few times, and every input feature gets used in prediction.
+```{r, warning = F, message = F, echo = F}
+set.seed(1)
+model_forest <- randomForest(status_group ~ ., data = train_logistic_regression, importance = T, ntree = 300, nodesize = 6)
+
+# Use random forest to predict the values in test
+preds_forest <- predict(model_forest, test_logistic_regression)
+confusionMatrix(preds_forest, test_y)
+```
+
+\pagebreak 
+
+## KNN
+```{r, echo = F, message = F, warning = F}
+set.seed(1)
+train_y <- as.factor(train$status_group)
+levels(train_y) <- make.names(levels(factor(train_y)))
+
+ctrl <- trainControl(method = "repeatedcv",
+                     repeats = 2)
+
+model_knn <- train(status_group ~.,
+                   data = train_logistic_regression,
+                   method = "knn", 
+                   trControl = ctrl, 
+                   preProcess = c("center","scale"), 
+                   tuneLength = 10)
+
+plot(model_knn)
+
+# predict on the test set
+preds_knn_test <- predict(model_knn, newdata = test_logistic_regression)
+confusionMatrix(preds_knn_test, test_y)
+```
+
+
+## Rick's Algorithm
+# ASSC - Active Set Selection Classification
+
+```{r}
+### STEP 0
+# create small workable data sets
+train_logistic_regression_reorder <- subset(train_logistic_regression, select = c(2:14, status_group))
+test_logistic_regression_target <- cbind(test_logistic_regression, test_y)
+train_small <- train_logistic_regression_reorder[sample(nrow(train_logistic_regression_reorder), 100),]
+test_small <- test_logistic_regression_target[sample(nrow(test_logistic_regression_target), 100),]
+
+train_small <- train_logistic_regression_reorder
+test_small <- test_logistic_regression_target
+
+#standardize numeric inputs
+train_small[,1] <- (train_small[,1] - mean(train_small[,1]))/sd(train_small[,1])
+test_small[,1] <- (test_small[,1] - mean(test_small[,1]))/sd(test_small[,1])
+
+train_small[,2] <- (train_small[,2] - mean(train_small[,2]))/sd(train_small[,2])
+test_small[,2] <- (test_small[,2] - mean(test_small[,2]))/sd(test_small[,2])
+
+
+train_small
+test_small
+
+
+
+
+### STEP 1
+# dissimilarity/distance function
+weight <- 1.5  # set weight for categorical variable distance peice of function
+d <- function(u, x){
+  # categorical variables (11) <-  # of variables that don't match
+  # continuous variables (2) <- euclidean distance
+  # combine linearly and give a wieght to the categorical variable distance so that it has a reasonable amount of say in the distance between the two cases being compared
+  dissimilarity <- sqrt(sum((u[1:2]-x[1:2])^2)) + weight*sum(u[3:13] != x[3:13])
+}
+
+# w is the "association matrix" higher values in this matrix indicate a higher association between the train and test cases being compared.
+w <- matrix(nrow = nrow(test_small), ncol = nrow(train_small))
+for(j in 1:nrow(test_small)){
+  for(i in 1:nrow(train_small)){
+    w[j,i] <- exp(-d(subset(test_small[j,], select = -c(test_y)), subset(train_small, select = -c(status_group))[i,])/2)
+  }
+}
+
+
+
+### STEP 2
+# selection probability matrix
+p <- matrix(nrow = nrow(test_small), ncol = nrow(train_small))
+for(j in 1:nrow(test_small)){
+  p[j,] <- w[j,]/apply(w, 1, sum)[j]
+}
+
+
+### STEP 3
+
+B <- 9 # number of samples to take and vote 
+predictions <- matrix(nrow = nrow(test_small), ncol = B)
+
+for(b in 1:B){
+    
+  for(j in 1:nrow(test_small)){  
+    
+    q <- 100  #size of weighted bootstrap sample
+    active_set_b <- c()
+    for(l in 1:q){
+      # set presets for flag, index, and cumulative probability
+      flag <- 0
+      index <- 0
+      cum_prob <- 0
+      
+      # simulate a uniform(0,1) rv
+      unif <- runif(1)
+      
+      while(flag == 0){
+        index <- index + 1
+        cum_prob <- cum_prob + p[j,index]
+        
+        if(unif <= cum_prob){
+          flag <- 1
+        }
+      }
+      
+      active_set_b <- rbind(active_set_b, train_small[index,])
+      
+    }
+    
+    
+    #### BUILD CLASSIFIER 
+    # SVM
+    model_svm_b <- svm(status_group ~ ., data = active_set_b, kernel="radial", cost = 10)
+    predictions[j, b] <- ifelse(predict(object = model_svm_b, newdata = subset(test_small[j,], select = -c(test_y))) == "functional", "functional", "non functional")
+  }
+}
+
+voting <- function(x){
+  sum(x == "functional")
+}
+
+preds_assc <- ifelse(apply(predictions, 1, voting) >= 5, "functional", "non functional")
+confusionMatrix(preds_assc, test_small$test_y)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r, echo=F}
+## Meeting 2/9
+# logistic regression, ppl adjust to train on ssomething w dif set of wiehgts than realcase. If you think aboout it clearly there's nothing special about logistic regression there.
+# 
+# Misweighting?
+# 
+# Does random forest shoot for the overall classification rate???
+# 
+# In right corner look at condtl of x|fcnl and condtl of x|nonfcnl same as if I sampled from the whole space except the wieghts oare diffferent.
+# 
+# look just at ones in corner condl dist doesn't change.. but classifier only sees this.
+# 
+# if dataset lets you make a likelihood ratio in corner, issue of extending it to whole space. problem is making a classifier that takes that LR and the weights from the corner.
+# 
+# can take the condl prob of 1 from one model and turn it into the condl prob of 1 from another model
+# 
+# Rewieghting things may fix it, or some as I go along.
+# WEIGHTS!
+# 
+# Covariate shift.. conditional distributions aren't the same in corner and the rest.
+# 
+# problem w really nonparametric things is don't know how to tke a nonpara est of den and extend it. maybe if it's multivariate normal...? no?... then how do we move out of the corner.
+# 
+# 
+# ## Meeting 2/23
+# at the end of the day you're extrapolating likelihood ratios or conditional probabilities. If it goes to pot, it goes to pot, and you write about how and why.
+```
