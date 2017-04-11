@@ -14,10 +14,10 @@ fontsize: 12pt
 \newcommand\ddfrac[2]{\frac{\displaystyle #1}{\displaystyle #2}} 
 
 ```{r, echo = F, message = F, warning = F}
-require(ggplot2)
-require(dplyr)
+library(tidyverse)
 library(randomForest)
 library(caret)
+library(e1071)
 library(sampling)
 set.seed(42)
 options(scipen = 999)
@@ -26,15 +26,15 @@ options(scipen = 999)
 train_values_url <- "http://s3.amazonaws.com/drivendata/data/7/public/4910797b-ee55-40a7-8668-10efd5c1b960.csv"
 
 # Import train_values
-train_values <- read.csv(train_values_url)
+train_values <- read.csv(train_values_url)  #write.csv(train_values, "./data/train_values.csv")
 
 # Define train_labels_url
 train_labels_url <- "http://s3.amazonaws.com/drivendata/data/7/public/0bf8bc6e-30d0-4c50-956a-603fc693d966.csv"
 
 # Import train_labels
-train_labels <- read.csv(train_labels_url)
+train_labels <- read.csv(train_labels_url)    # write.csv(train_labels, "./data/train_labels.csv")
 
-train <- merge(train_labels, train_values, by = "id")
+train <- merge(train_labels, train_values, by = "id")      # write.csv(train, "./data/train.csv")
 
 # combine labels for 2class classification problem
 train$status_group <- factor(train$status_group, levels = c(levels(train$status_group), "requires attention"))
@@ -63,7 +63,7 @@ data$gps_height[data$gps_height == 0] <- median(data$gps_height[data$gps_height>
 \vspace{1cm}
 
 ## Abstract  
-When companies implement algorithms to expedite existing job functions it often leaves them with newly available employees, time, and money to investigate other unexplored parts of their market. To be as efficient as possible in an expansion such as this, the company can again turn to some machine learning algorithm to point to where the newly available resources should be focused in the market. Unfortunately, the only available data to train an algorithm on would then be data from the portion of the market that has already been explored by the company. In other words, whether a case in the data set would have a label or not is due to a specific non-random mechanism. I evaluate the performance of logistic regression, \textbf{support} \textbf{vector} \textbf{machine} (SVM), and random forest models under this framework. Additionally, I implement one classification method called \textbf{active} \textbf{set} \textbf{selection} \textbf{classification} (ASSM) that involves weighted bootstrap and emsemble learning.
+When companies implement algorithms to expedite existing job functions it often leaves them with newly available employees, time, and money to investigate other unexplored parts of their market. To be as efficient as possible in an expansion such as this, the company can again turn to some machine learning algorithm to point to where the newly available resources should be focused in the market. Unfortunately, the only available data to train an algorithm on would then be data from the portion of the market that has already been explored by the company. In other words, whether a case in the data set would have a label or not is due to a specific non-random mechanism. I evaluate the performance of logistic regression, \textbf{s}upport \textbf{v}ector \textbf{m}achine (SVM), and random forest models under this framework. Additionally, I implement one classification method called \textbf{a}ctive \textbf{s}et \textbf{s}election \textbf{c}lassification (ASSC) that involves weighted bootstrap and emsemble learning.
 
 \pagebreak 
 
@@ -147,21 +147,21 @@ $\quad$ The water pump data has 59,400 rows and 41 columns and contains informat
 
 $\quad$ There is a variable in the data set, `population`, that provides information about the size of the population surrounding the water point. Nearly 36\% of the values in this column are zero. It is clear that many of the zeros simply indicate a missing value, but we acknowledge the possibility that there truly are not any residents residing in the vacinity of a water point. If the latter is the case, we can eliminate the water point from the data set since we do not wish to expend effort classifying a water point that is abandoned. If the former is true, then the zero represents a missing value. After looking for patterns that might help us understand these many missing values, we find that the location of the water point seems relevant. 
 
-$\quad$ Tanzania is divided into regions and most zero values of the `population` variable are for water points in six of these regions [@DrivenData]. Since the focus of this problem is not a spatial analysis and it would not be particularly helpful to classify abandoned water points, we can proceed only considering water points with non-zero values of the `population` variable. Similarly, we will elimate any wells that are missing information about construction year. This effectively reduces the number of rows from 59,400 to 37,344. The map in left panel of Figure 2 displays all 59,400 water points in the original data set. The map in the right panel of Figure 2 includes only the water points with valid `population` data. Both maps are colored by the classification of the water pump status. Maps were generated using shape files from the GADM spatial database [@shapefile].
+$\quad$ Tanzania is divided into regions and most zero values of the `population` variable are for water points in six of these regions [@DrivenData]. Since the focus of this problem is not a spatial analysis and it would not be particularly helpful to classify abandoned water points, we can proceed only considering water points with non-zero values of the `population` variable. Similarly, we will elimate any wells that are missing information about construction year. This effectively reduces the number of rows from 59,400 to 37,344. The map in left panel of Figure 2 displays all 59,400 water points in the original data set. The map in the right panel of Figure 2 includes only the water points with valid `population` and `construction_year` data. Both maps are colored by the classification of the water pump status. Maps were generated using shape files from the GADM spatial database [@shapefile].
 
 
 \vspace{1.5cm}
 
-```{r, echo = F, message = F, warning = F}
+```{r, echo = F, message = F, warning = F, eval = F}
 library(maptools)
 library(gridExtra)
 library(gtable)
 library(grid)
-# install.packages("devtools")
-devtools::install_github("baptiste/egg")
+#install.packages("devtools")
+#devtools::install_github("baptiste/egg")
 library(egg)
 
-shape <- readShapeSpatial("/Users/amy/Documents/CC/Creative Component/TZA_adm_shp/TZA_adm1.shp")
+shape <- readShapeSpatial("/Users/amycrawford/Documents/Creative Component/Creative-Component/TZA_adm_shp/TZA_adm1.shp")
 
 country <- shape %>% ggplot(aes(x = long, y = lat)) + geom_path(aes(group = group))
 
@@ -173,7 +173,7 @@ map1 <- country + geom_point(data = train[train$latitude != 0 & train$longitude 
 
 map2 <- country + geom_point(data = data[data$latitude != 0 & data$longitude != 0,],
                      aes(x = longitude, y = latitude, colour = status_group), size = 0.5) +
-  ggtitle("", subtitle = "\nExclude Water Points with \n'Zero' Surrounding Population") +
+  ggtitle("", subtitle = "\nExclude Water Points with Zero\nPopulation or Construction Year") +
   labs(x = "Longitude", y = "Latitude") + guides(colour=FALSE)
 
 
@@ -207,7 +207,6 @@ $\quad$ The variable `construction_year` is simply the year in which water point
 
 ```{r, warning=F, message = F, echo = F, fig.height=3, fig.width=7}
 ###### Analyze construction_year variable
-
 ggplot(data) + geom_bar(aes(construction_year, fill = status_group)) + 
   xlim(1960, 2013) + 
   ggtitle("Figure 4", subtitle = "Histogram of the Construction Year Variable") + 
@@ -227,7 +226,6 @@ The training data has 2,886 rows and the testing data has 34,458 rows. The distr
 \vspace{1cm}
 
 ```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 9}
-library(ggplot2)
 ggplot() + ggtitle("Table 1", subtitle = "Distribution of the Status Group Variable in Training and Testing Data Sets                           ") + theme_minimal()
 ```
 
@@ -317,8 +315,6 @@ data[data$public_meeting %in% c(""),]$public_meeting <- "Unknown"
 
 # get rid of id, corner, population, and construction_year columns
 data$id <- NULL
-data$population <- NULL
-data$construction_year <- NULL
 
 #Separate data into train and test set
 train <- data[data$corner == 1,]
@@ -331,24 +327,36 @@ test_y <- test$status_group
 test$status_group <- NULL
 
 
-train_logistic_regression <- train
-train_logistic_regression <- droplevels(train_logistic_regression)
-train_logistic_regression$amount_tsh <- (train_logistic_regression$amount_tsh - mean(train_logistic_regression$amount_tsh))/sd(train_logistic_regression$amount_tsh)
-train_logistic_regression$gps_height <- (train_logistic_regression$gps_height - mean(train_logistic_regression$gps_height))/sd(train_logistic_regression$gps_height)
+train_15 <- train
+train_15$amount_tsh <- (train_15$amount_tsh - mean(train_15$amount_tsh))/sd(train_15$amount_tsh)
+train_15$gps_height <- (train_15$gps_height - mean(train_15$gps_height))/sd(train_15$gps_height)
+train_15$population <- (train_15$population - mean(train_15$population))/sd(train_15$population)
+train_15$construction_year <- (train_15$construction_year -
+                                 mean(train_15$construction_year))/sd(train_15$construction_year)
+train_15 <- droplevels(train_15)
+train_15 <- subset(train_15, select = c(2:3, 5, 9, 4, 6:8, 10:16, status_group))
 
-# some (rare) factors exist in the training set but not the testing set, rename them.
-# train_logistic_regression[train$extraction_type_class %in% "rope pump",]$extraction_type_class <- "other"
-# train_logistic_regression[train$waterpoint_type %in% "dam",]$waterpoint_type <- "other"
+train_13 <- train_15
+train_13$population <- NULL
+train_13$construction_year <- NULL
+train_13 <- droplevels(train_13)
 
-train_logistic_regression <- droplevels(train_logistic_regression)
 
-test_logistic_regression <- test
-test_logistic_regression[test$extraction_type_class %in% "rope pump",]$extraction_type_class <- "other"
-test_logistic_regression[test$waterpoint_type %in% "dam",]$waterpoint_type <- "other"
-test_logistic_regression$amount_tsh <- (test_logistic_regression$amount_tsh - mean(test_logistic_regression$amount_tsh))/sd(test_logistic_regression$amount_tsh)
-test_logistic_regression$gps_height <- (test_logistic_regression$gps_height - mean(test_logistic_regression$gps_height))/sd(test_logistic_regression$gps_height)
+test_15 <- test
+test_15[test_15$extraction_type_class %in% "rope pump",]$extraction_type_class <- "other"
+test_15[test_15$waterpoint_type %in% "dam",]$waterpoint_type <- "other"
+test_15$amount_tsh <- (test_15$amount_tsh - mean(test_15$amount_tsh))/sd(test_15$amount_tsh)
+test_15$gps_height <- (test_15$gps_height - mean(test_15$gps_height))/sd(test_15$gps_height)
+test_15$population <- (test_15$population - mean(test_15$population))/sd(test_15$population)
+test_15$construction_year <- (test_15$construction_year -
+                                 mean(test_15$construction_year))/sd(test_15$construction_year)
+test_15 <- droplevels(test_15)
+test_15 <- subset(test_15, select = c(1:2, 4, 8, 3, 5:7, 9:15))
 
-test_logistic_regression <- droplevels(test_logistic_regression)
+test_13 <- test_15
+test_13$population <- NULL
+test_13$construction_year <- NULL
+test_13 <- droplevels(test_13)
 ```
 
 $\quad$ There are many groups of variables in the data that are meant to give the same information at different levels of detail. For example, the variables `source`, `source_type`, and `source_class` all provide information about the water source feeding the water point. These variables are all coded as factors. The `source_class` variable gives very general, high level information while `source_type` is a bit less general, giving a moderate amount of detail. The `source` variable is the most detailed of the three. Table 2 shows the unique values each of these variables can take. These variables are highly correlated and will clearly introduce multicollinearity during the modeling process. For variable groups like these, the one providing what we judge to be the most appropriate level of detail is chosen using visual comparison and numerical summaries. For the three variables discussed here, `source_type` was chosen as the most appropriate to inform the subsequent models about the water source feeding the water point. A bar plot of the `source_type` variable, colored by the target variable, `status_group`, in the training data can be found in Figure 5.
@@ -356,7 +364,6 @@ $\quad$ There are many groups of variables in the data that are meant to give th
 \vspace{1cm}
 
 ```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 9}
-library(ggplot2)
 ggplot() + ggtitle("Table 2", subtitle = "Unique Values in each of the Variables that Provide Water Source Information                     ") + theme_minimal()
 ```
 \begin{singlespace}
@@ -397,7 +404,6 @@ $\quad$ There are variables in the data set that appear to be manually maintaine
 
 
 ```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 7}
-library(ggplot2)
 ggplot() + ggtitle("Table 3", subtitle = "Final Set of Predictor Variables                                                                                                                             ") + theme_minimal()
 ```
 \begin{singlespace}
@@ -435,14 +441,43 @@ Logistic regression has a long history in the field of statistics and is one of 
 
 ```{r, echo = F, message = F, warning = F}
 ## LOGISTIC REGRESSION
-# set.seed(1)
-# model_logistic_regression <- glm(status_group ~.,family=binomial(link='logit'),data=train_logistic_regression)
-# #summary(model_logistic_regression)
-# a <- anova(model_logistic_regression, test = "Chisq")
-# 
-# preds_logistic_regression <- predict(model_logistic_regression, newdata = test_logistic_regression) #predict 
-# preds_logistic_regression_factor <- ifelse(preds_logistic_regression < 0, "functional", "requires attention") #convert numeric predictions to factor to match response variable
-# confusionMatrix(preds_logistic_regression_factor, test_y)
+set.seed(1)
+model_logistic_regression_13 <- glm(status_group ~.,family=binomial(link='logit'),data=train_13)
+model_logistic_regression_15 <- glm(status_group ~.,family=binomial(link='logit'),data=train_15)
+
+#summary(model_logistic_regression)
+a_13 <- anova(model_logistic_regression_13, test = "Chisq")
+a_15 <- anova(model_logistic_regression_15, test = "Chisq")
+
+#LRT full vs. reduced model
+a_comp <- anova(model_logistic_regression_13, model_logistic_regression_15, test = "Chisq")
+```
+
+
+```{r, echo = F, message = F, warning = F}
+## LOGISTIC REGRESSION
+
+### Cross-Validation
+ctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 3, savePredictions = TRUE)
+
+model_logistic_regression_15_CV <- train(status_group~.,  data=train_15, method="glm", family="binomial", trControl = ctrl)
+model_logistic_regression_13_CV <- train(status_group~.,  data=train_13, method="glm", family="binomial", trControl = ctrl)
+
+# Cross validation accuracy and Kappa are in
+# model_logistic_regression_15_CV$results, and
+# model_logistic_regression_13_CV$results
+
+# predict on test data
+preds_logistic_regression_15_CV <- predict(model_logistic_regression_15_CV, newdata = test_15)
+preds_logistic_regression_13_CV <- predict(model_logistic_regression_13_CV, newdata = test_13)
+
+cm_15 <- confusionMatrix(data=preds_logistic_regression_15_CV, test_y)
+cm_13 <- confusionMatrix(data=preds_logistic_regression_13_CV, test_y)
+
+
+#preds_logistic_regression <- predict(model_logistic_regression, newdata = test_logistic_regression) #predict 
+#preds_logistic_regression_factor <- ifelse(preds_logistic_regression < 0, "functional", "requires attention") #convert numeric predictions to factor to match response variable
+#confusionMatrix(preds_logistic_regression_factor, test_y)
 ```
 
 
@@ -451,8 +486,7 @@ Logistic regression has a long history in the field of statistics and is one of 
 
 
 ```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 7}
-library(ggplot2)
-ggplot() + ggtitle("Table 4", subtitle = "Confusion Matrix and Statistics for Classifaction by Logistic Regression                                           ") + theme_minimal()
+ggplot() + ggtitle("Table 4", subtitle = "Confusion Matrix and Statistics for Classification by Logistic Regression with 13 predictors                                          ") + theme_minimal()
 ```
 
 \begin{center}
@@ -460,20 +494,41 @@ ggplot() + ggtitle("Table 4", subtitle = "Confusion Matrix and Statistics for Cl
 \begin{tabular}{l r c c}
     & & \multicolumn{2}{ c }{Reference} \\
     & & functional & requires attention \\ \cline{3-4} 
-    Prediction & \multicolumn{1}{r|}{functional} & 13138 & 4206 \\
-    & \multicolumn{1}{r|}{requires attention} & 6632 & 10482 \\
+    Prediction & \multicolumn{1}{r|}{functional} & `r cm_13$table[1,1]` & `r cm_13$table[1,2]` \\
+    & \multicolumn{1}{r|}{requires attention} & `r cm_13$table[2,1]` & `r cm_13$table[2,2]` \\
 \end{tabular}
 \begin{tabular}{llrl}
     &&& \\
-    &    &   Kappa: &0.3703\\
-    &    &   Accuracy :&0.6855\\
-    &    &   Sensitivity :&0.6645 \\               
-    &    &   Specificity :&0.7136\\
+    &    &   Kappa :&`r round(cm_13$overall[2], 4)`\\
+    &    &   Accuracy :&`r round(cm_13$overall[1], 4)`\\
+    &    &   Sensitivity :&`r round(cm_13$byClass[1], 4)` \\               
+    &    &   Specificity :&`r round(cm_13$byClass[2], 4)`\\
 \end{tabular}
 \end{center}
 \vspace{1cm}
 
 
+```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 7}
+ggplot() + ggtitle("Table 5", subtitle = "Confusion Matrix and Statistics for Classification by Logistic Regression with 15 predictors                                           ") + theme_minimal()
+```
+
+\begin{center}
+\footnotesize
+\begin{tabular}{l r c c}
+    & & \multicolumn{2}{ c }{Reference} \\
+    & & functional & requires attention \\ \cline{3-4} 
+    Prediction & \multicolumn{1}{r|}{functional} & `r cm_15$table[1,1]` & `r cm_15$table[1,2]` \\
+    & \multicolumn{1}{r|}{requires attention} & `r cm_15$table[2,1]` & `r cm_15$table[2,2]` \\
+\end{tabular}
+\begin{tabular}{llrl}
+    &&& \\
+    &    &   Kappa : &`r round(cm_15$overall[2], 4)`\\
+    &    &   Accuracy :&`r round(cm_15$overall[1], 4)`\\
+    &    &   Sensitivity :&`r round(cm_15$byClass[1], 4)` \\               
+    &    &   Specificity :&`r round(cm_15$byClass[2], 4)`\\
+\end{tabular}
+\end{center}
+\vspace{1cm}
 
 
 
@@ -485,31 +540,28 @@ $\quad$ \textbf{S}upport \textbf{V}ector \textbf{M}achines (SVMs) are a more fle
 $\quad$ An SVM model with a _radial_ kernal and a cost parameter of _50_ was fit with the `e1071` package in `R`. The cost paramater was tuned using repeated 10-fold cross validation with the `tune` function in the `e1071` package in `R`. The confusion matrix and prediction statistics are included in Table 5. We see here that classification using a an SVM model yields slightly lower values of accuracy and the Kappa statistic, but still keeps a Kappa value above 0.3.
 
 
-```{r, echo = F, message = F, warning = F}
+```{r, echo = F, message = F, warning = F, eval = F}
 ## SVM
-#set.seed(1)
-#require(e1071)
-#require(caret)
+set.seed(1)
 
 # tune
-# svm_tune <- tune(svm, status_group~., 
-#                  data = train_logistic_regression, 
-#                  kernel="radial", 
-#                  tunecontrol = tune.control(nrepeat = 3, cross = 10),
-#                  ranges=list(cost=c(30, 40, 50 , 60)))
-# 
-# print(svm_tune)
+svm_tune <- tune(svm, status_group~.,
+                 data = train_logistic_regression,
+                 kernel="radial",
+                 tunecontrol = tune.control(nrepeat = 3, cross = 10),
+                 ranges=list(cost=c(30, 40, 50 , 60)))
 
-#model_svm <- svm(status_group ~ ., data=train_logistic_regression, kernel = "radial", cost = 50)
+print(svm_tune)
 
-#summary(model_svm) 
+model_svm <- svm(status_group ~ ., data=train_logistic_regression, kernel = "radial", cost = 50)
 
-#preds_svm <- predict(model_svm, newdata = test_logistic_regression) #predict 
-#confusionMatrix(preds_svm, test_y) 
+summary(model_svm)
+
+preds_svm <- predict(model_svm, newdata = test_logistic_regression) #predict
+confusionMatrix(preds_svm, test_y)
 ```
 
 ```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 7}
-library(ggplot2)
 ggplot() + ggtitle("Table 5", subtitle = "Confusion Matrix and Statistics for Classifaction by Support Vector Machine (SVM)                                           ") + theme_minimal()
 ```
 
@@ -538,38 +590,37 @@ $\quad$ Random forest is a tree-based method that can be used for classification
 
 $\quad$ A random forest model was trained using the `randomForest` function from the `randomForest` package in `R`. The parameter `mtry` determines the number of features randomly sampled as candidates at each split. An `mtry` value of 6 was tuned using `tuneRF`, a function that is also from the `randomForest` package which searches to the left and right of the default `mtry` value (which in this case is 3) to minimize out of bag (OOB) error. The resulting confusion matrix and statistics are in Table 6. We see that both logistic regression and SVMs outperform the random forest according to the Accuracy and Kappa values. Additionally, the sensitivity value of 0.5945 is notably low.
 
-```{r, warning=F, message = F, echo = F, fig.height=4, fig.width=7}
-# rf_tune <- tuneRF(x = train_logistic_regression[,2:13], y = train_logistic_regression[,1], ntreeTry = 500, plot = F)
-# 
-# 
-# ggplot(data = as.data.frame(rf_tune)) + geom_point(aes(x = mtry, y = OOBError)) + 
-#   ggtitle("Figure 6", subtitle = "Tune Parameter mtry for Random Forest") + 
-#   scale_x_continuous(breaks = 2:12) + 
-#   labs(y = "OOB Error")
+```{r, warning=F, message = F, echo = F, fig.height=4, fig.width=7, eval = F}
+rf_tune <- tuneRF(x = train_logistic_regression[,2:13], y = train_logistic_regression[,1], ntreeTry = 500, plot = F)
+ 
+ 
+ggplot(data = as.data.frame(rf_tune)) + geom_point(aes(x = mtry, y = OOBError)) + 
+  ggtitle("Figure 6", subtitle = "Tune Parameter mtry for Random Forest") + 
+  scale_x_continuous(breaks = 2:12) + 
+  labs(y = "OOB Error")
 ```
 
 
 
 
-```{r, warning = F, message = F, echo = F}
+```{r, warning = F, message = F, echo = F, eval = F}
 set.seed(1)
 
 
-#rf_tune <- tuneRF(x = train_logistic_regression[,2:13], y = train_logistic_regression[,1], ntreeTry = 500)
+rf_tune <- tuneRF(x = train_logistic_regression[,2:13], y = train_logistic_regression[,1], ntreeTry = 500)
 
-#model_forest <- randomForest(status_group ~ ., data = train_logistic_regression, importance = T, ntree = 1500, mtry = 6)
+model_forest <- randomForest(status_group ~ ., data = train_logistic_regression, importance = T, ntree = 1500, mtry = 6)
 
-#Use random forest to predict the values in test
-#preds_forest <- predict(model_forest, test_logistic_regression)
-#confusionMatrix(preds_forest, test_y)
+# Use random forest to predict the values in test
+preds_forest <- predict(model_forest, test_logistic_regression)
+confusionMatrix(preds_forest, test_y)
 
-#importance(model_forest)
+importance(model_forest)
 ```
 \vspace{1cm} 
 
 
 ```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 7}
-# library(ggplot2)
 ggplot() + ggtitle("Table 6", subtitle = "Confusion Matrix and Statistics for Classifaction by Random Forest                                           ") + theme_minimal()
 ```
 \begin{center}
@@ -676,107 +727,112 @@ Step 4.
 
 $\quad$ Implementing this algorithm using a random sample of size $m = 200$ from $\mathcal{P}$ with parameters $B = 201$, $q = 100$, $\tau = 1.5$, $\lambda = 5$ yields the confusion matrix and statistics in Table 7. Because a subset of the testing cases were used the reference distribution of `functional` and `requires attention` wells will likely differ from the overall distribution for the entire set $\mathcal{P}$ (i.e. the no information rates will differ). Because the Kappa statistic takes into account the accuracy that would be generated simply by chance [@kuhn_johnson] it can be used to compare accross the models presented here. Notice that the Kappa statistic of 0.3624 is higher than that of SVM and random forest. Thus, by fitting an SVM classifier to $B = 201$ weighted bootstrap samples of (only) size $q = 100$ and letting each classifier vote to make a final prediction for each test case, we are able to outperform both SVM and random forst which were both optimally tuned. Particularly interesting is that the ASSC-SVM outperformed the optimally tuned SVM which implies that ASSC does alter the decision boundary based on the predicting set [@rick].
 
-```{r, echo = FALSE}
-### STEP 0
-# # create small workable data sets
-# train_logistic_regression_reorder <- subset(train_logistic_regression, select = c(2:14, status_group))
-# test_logistic_regression_target <- cbind(test_logistic_regression, test_y)
-# #train_small <- train_logistic_regression_reorder[sample(nrow(train_logistic_regression_reorder), 500),]
-# test_small <- test_logistic_regression_target[sample(nrow(test_logistic_regression_target), 300),]
-# 
-# train_small <- train_logistic_regression_reorder
-# # test_small <- test_logistic_regression_target
-#  
-#  
-#  
-#  
-# ### STEP 1
-# # dissimilarity/distance function
-# tau <- 1  # set weight for categorical variable distance peice of function
-# lambda <- 3
-# 
-# d <- function(u, x){
-#   # categorical variables (11) <-  # of variables that don't match
-#   # continuous variables (2) <- euclidean distance
-#   # combine linearly and give a wieght to the categorical variable distance so that it has a reasonable amount of say in the distance between the two cases being compared
-#   dissimilarity <- sum((u[1:2]-x[1:2])^2) + tau^2*sum(u[3:13] != x[3:13])
-# }
-#  
-# # w is the "association matrix" higher values in this matrix indicate a higher association between the train and test cases being compared.
-# w <- matrix(nrow = nrow(test_small), ncol = nrow(train_small))
-# for(j in 1:nrow(test_small)){
-#   for(i in 1:nrow(train_small)){
-#     w[j,i] <- exp(-d(subset(test_small[j,], select = -c(test_y)), subset(train_small, select = -c(status_group))[i,])/lambda)
-#   }
-# } 
-# 
-# ### STEP 2
-# # selection probability matrix
-# p <- matrix(nrow = nrow(test_small), ncol = nrow(train_small))
-# for(j in 1:nrow(test_small)){
-#   p[j,] <- w[j,]/apply(w, 1, sum)[j]
-# } 
-# 
-# 
-# 
-# 
-# ### STEP 3
-# 
-# B <- 201 # number of samples to take and vote 
-# predictions <- matrix(nrow = nrow(test_small), ncol = B)
-# 
-# for(b in 1:B){
-#     
-#   for(j in 1:nrow(test_small)){  
-#     
-#     q <- 180  #size of weighted bootstrap sample
-#     active_set_b <- c()
-#     for(l in 1:q){
-#       # set presets for flag, index, and cumulative probability
-#       flag <- 0
-#       index <- 0
-#       cum_prob <- 0
-#       
-#       # simulate a uniform(0,1) rv
-#       unif <- runif(1)
-#       
-#       while(flag == 0){
-#         index <- index + 1
-#         cum_prob <- cum_prob + p[j,index]
-#         
-#         if(unif <= cum_prob){
-#           flag <- 1
-#         }
-#       }
-#       
-#       
-#       active_set_b <- rbind(active_set_b, train_small[index,])
-#       
-#     }
-#     
-#     # if the numeric variables are constant wiggle it a little so the classifier doesn't break
-#     if(sd(active_set_b[,1]) == 0){active_set_b[1,1] <- active_set_b[1,1] + 0.001}
-#     if(sd(active_set_b[,2]) == 0){active_set_b[1,2] <- active_set_b[1,2] + 0.001}
-#     
-# 
-#     
-#     #### BUILD CLASSIFIER 
-#     # SVM
-#     if(length(unique(active_set_b$status_group)) == 1){
-#       predictions[j,b] <- active_set_b$status_group[1]  
-#     }else{
-#       model_svm_b <- svm(status_group ~ ., data = active_set_b, kernel="radial", cost = 10)
-#       predictions[j, b] <- ifelse(predict(object = model_svm_b, newdata = subset(test_small[j,], select = -c(test_y))) == "functional", "functional", "requires attention")
-#     }
-#   }
-# } 
-# 
-# voting <- function(x){
-#   sum(x == "functional")
-# }
-# 
-# preds_assc <- ifelse(apply(predictions, 1, voting) >= (B+1)/2, "functional", "requires attention")
-# confusionMatrix(preds_assc, test_small$test_y)
+```{r, echo = FALSE, eval = F}
+## STEP 0
+ # create small workable data sets
+ test_13_target <- cbind(test_13, test_y)
+ test_13_small <- test_13_target[sample(nrow(test_13_target), 300),]
+ train_13_small <- train_13
+```  
+  
+  
+```{r, echo = FALSE, eval = F}
+ ### STEP 1
+ # dissimilarity/distance function
+ tau <- 1.5  # set weight for categorical variable distance peice of function
+ lambda <- 3
+ 
+ d_13 <- function(u, x){
+   # categorical variables (11) <-  # of variables that don't match
+   # continuous variables (2) <- euclidean distance
+   # combine linearly and give a wieght to the categorical variable distance so that it has a reasonable amount of say in the distance between the two cases being compared
+   dissimilarity <- sum((u[1:2]-x[1:2])^2) + tau^2*sum(u[3:13] != x[3:13])
+ }
+  
+ # w is the "association matrix" higher values in this matrix indicate a higher association between the train and test cases being compared.
+ w <- matrix(nrow = nrow(test_13_small), ncol = nrow(train_13_small))
+ for(j in 1:nrow(test_13_small)){
+   for(i in 1:nrow(train_13_small)){
+     w[j,i] <- exp(-d_13(subset(test_13_small[j,], select = -c(test_y)), subset(train_13_small, select = -c(status_group))[i,])/lambda)
+   }
+ } 
+beep(2)
+```
+
+ 
+ 
+```{r, echo = FALSE, eval = F}
+ ### STEP 2
+ # selection probability matrix
+ p <- matrix(nrow = nrow(test_13_small), ncol = nrow(train_13_small))
+ for(j in 1:nrow(test_13_small)){
+   p[j,] <- w[j,]/apply(w, 1, sum)[j]
+ } 
+```
+ 
+ 
+```{r, echo = FALSE, eval = F}
+ ### STEP 3
+ 
+ B <- 201  # number of samples to take and vote 
+ predictions <- matrix(nrow = nrow(test_13_small), ncol = B)
+ 
+ for(b in 1:B){
+     
+   for(j in 1:nrow(test_13_small)){  
+     
+     q <- 150  #size of weighted bootstrap sample
+     active_set_b <- c()
+     for(l in 1:q){
+       # set presets for flag, index, and cumulative probability
+       flag <- 0
+       index <- 0
+       cum_prob <- 0
+       
+       # simulate a uniform(0,1) rv
+       unif <- runif(1)
+       
+       while(flag == 0){
+         index <- index + 1
+         cum_prob <- cum_prob + p[j,index]
+         
+         if(unif <= cum_prob){
+           flag <- 1
+         }
+       }
+       
+       
+       active_set_b <- rbind(active_set_b, train_13_small[index,])
+       
+     }
+     
+     # if the numeric variables are constant wiggle it a little so the classifier doesn't break
+     if(sd(active_set_b[,1]) == 0){active_set_b[1,1] <- active_set_b[1,1] + 0.001}
+     if(sd(active_set_b[,2]) == 0){active_set_b[1,2] <- active_set_b[1,2] + 0.001}
+     
+ 
+     
+     #### BUILD CLASSIFIER 
+     # SVM
+     if(length(unique(active_set_b$status_group)) == 1){
+       predictions[j,b] <- active_set_b$status_group[1]  
+     }else{
+       model_svm_b <- svm(status_group ~ ., data = active_set_b, kernel="radial", cost = 10)
+       predictions[j, b] <- ifelse(predict(object = model_svm_b, newdata = subset(test_13_small[j,], select = -c(test_y))) == "functional", "functional", "requires attention")
+     }
+   }
+ } 
+ 
+beep(2)
+```
+
+```{r, echo = FALSE, eval = F}
+ voting <- function(x){
+   sum(x == "functional")
+ }
+ 
+ preds_assc <- ifelse(apply(predictions, 1, voting) >= (B+1)/2, "functional", "requires attention")
+ confusionMatrix(preds_assc, test_13_small$test_y)
 ```
 
 \vspace{1cm} 
@@ -861,11 +917,5 @@ $x_{13}$ = waterpoint\_type  \newline
 
 \pagebreak  
 ## References  
-
-
-
-
-
-
 
 
