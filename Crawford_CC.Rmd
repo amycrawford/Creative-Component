@@ -9,6 +9,7 @@ header-includes:
 - \usepackage{setspace}
 - \doublespacing
 - \usepackage{bigints}
+- \usepackage{multirow}
 fontsize: 12pt
 ---
 \newcommand\ddfrac[2]{\frac{\displaystyle #1}{\displaystyle #2}} 
@@ -19,6 +20,7 @@ library(randomForest)
 library(caret)
 library(e1071)
 library(sampling)
+library(kernlab)
 set.seed(42)
 options(scipen = 999)
 
@@ -440,17 +442,17 @@ Four prediction methods are detailed in the following portion of the paper. Each
 Logistic regression has a long history in the field of statistics and is one of the most widely used source of classifiers [@james_witten_hastie_tibshirani]. In general, it is a method of estimating conditional probabilities as a function of explanatory variables and regression coefficients, and is often used to classify binary response data which is how we will apply it here. A logistic regression model was fit to the training data using the `glm` function in `R`. For logistic regression, categorical variables (stored as `factors` in `R`) are expanded into binary indicator variables. The full equation can be found in the appendix.  Using the model to classify each water pump in the testing set yields the confusion matrix and statistics in Table 4. The largest advantages of implementing a logistic regression model are interpretability and computational convenience. Since we are extrapolating, the relatively low values of Accuracy, Sensitivity, and Specificity are not surprising. Kuhn and Johnson (2013) write that Kappa values within 0.30 to 0.50 indicate reasonable agreement, so although it is on the low end, we are not so dissatisfied with the Kappa statistic of 0.3703.  
 
 ```{r, echo = F, message = F, warning = F}
-## LOGISTIC REGRESSION
-set.seed(1)
-model_logistic_regression_13 <- glm(status_group ~.,family=binomial(link='logit'),data=train_13)
-model_logistic_regression_15 <- glm(status_group ~.,family=binomial(link='logit'),data=train_15)
-
-#summary(model_logistic_regression)
-a_13 <- anova(model_logistic_regression_13, test = "Chisq")
-a_15 <- anova(model_logistic_regression_15, test = "Chisq")
-
-#LRT full vs. reduced model
-a_comp <- anova(model_logistic_regression_13, model_logistic_regression_15, test = "Chisq")
+# ## LOGISTIC REGRESSION
+# set.seed(1)
+# model_logistic_regression_13 <- glm(status_group ~.,family=binomial(link='logit'),data=train_13)
+# model_logistic_regression_15 <- glm(status_group ~.,family=binomial(link='logit'),data=train_15)
+# 
+# #summary(model_logistic_regression)
+# a_13 <- anova(model_logistic_regression_13, test = "Chisq")
+# a_15 <- anova(model_logistic_regression_15, test = "Chisq")
+# 
+# #LRT full vs. reduced model
+# a_comp <- anova(model_logistic_regression_13, model_logistic_regression_15, test = "Chisq")
 ```
 
 
@@ -468,11 +470,11 @@ model_logistic_regression_13_CV <- train(status_group~.,  data=train_13, method=
 # model_logistic_regression_13_CV$results
 
 # predict on test data
-preds_logistic_regression_15_CV <- predict(model_logistic_regression_15_CV, newdata = test_15)
-preds_logistic_regression_13_CV <- predict(model_logistic_regression_13_CV, newdata = test_13)
+preds_logistic_regression_15 <- predict(model_logistic_regression_15_CV, newdata = test_15)
+preds_logistic_regression_13 <- predict(model_logistic_regression_13_CV, newdata = test_13)
 
-cm_15 <- confusionMatrix(data=preds_logistic_regression_15_CV, test_y)
-cm_13 <- confusionMatrix(data=preds_logistic_regression_13_CV, test_y)
+cm_logistic_regression_15 <- confusionMatrix(data=preds_logistic_regression_15, test_y)
+cm_logistic_regression_13 <- confusionMatrix(data=preds_logistic_regression_13, test_y)
 
 
 #preds_logistic_regression <- predict(model_logistic_regression, newdata = test_logistic_regression) #predict 
@@ -494,15 +496,15 @@ ggplot() + ggtitle("Table 4", subtitle = "Confusion Matrix and Statistics for Cl
 \begin{tabular}{l r c c}
     & & \multicolumn{2}{ c }{Reference} \\
     & & functional & requires attention \\ \cline{3-4} 
-    Prediction & \multicolumn{1}{r|}{functional} & `r cm_13$table[1,1]` & `r cm_13$table[1,2]` \\
-    & \multicolumn{1}{r|}{requires attention} & `r cm_13$table[2,1]` & `r cm_13$table[2,2]` \\
+    Prediction & \multicolumn{1}{r|}{functional} & `r cm_logistic_regression_13$table[1,1]` & `r cm_logistic_regression_13$table[1,2]` \\
+    & \multicolumn{1}{r|}{requires attention} & `r cm_logistic_regression_13$table[2,1]` & `r cm_logistic_regression_13$table[2,2]` \\
 \end{tabular}
 \begin{tabular}{llrl}
     &&& \\
-    &    &   Kappa :&`r round(cm_13$overall[2], 4)`\\
-    &    &   Accuracy :&`r round(cm_13$overall[1], 4)`\\
-    &    &   Sensitivity :&`r round(cm_13$byClass[1], 4)` \\               
-    &    &   Specificity :&`r round(cm_13$byClass[2], 4)`\\
+    &    &   Kappa :&`r round(cm_logistic_regression_13$overall[2], 4)`\\
+    &    &   Accuracy :&`r round(cm_logistic_regression_13$overall[1], 4)`\\
+    &    &   Sensitivity :&`r round(cm_logistic_regression_13$byClass[1], 4)` \\               
+    &    &   Specificity :&`r round(cm_logistic_regression_13$byClass[2], 4)`\\
 \end{tabular}
 \end{center}
 \vspace{1cm}
@@ -517,15 +519,15 @@ ggplot() + ggtitle("Table 5", subtitle = "Confusion Matrix and Statistics for Cl
 \begin{tabular}{l r c c}
     & & \multicolumn{2}{ c }{Reference} \\
     & & functional & requires attention \\ \cline{3-4} 
-    Prediction & \multicolumn{1}{r|}{functional} & `r cm_15$table[1,1]` & `r cm_15$table[1,2]` \\
-    & \multicolumn{1}{r|}{requires attention} & `r cm_15$table[2,1]` & `r cm_15$table[2,2]` \\
+    Prediction & \multicolumn{1}{r|}{functional} & `r cm_logistic_regression_15$table[1,1]` & `r cm_logistic_regression_15$table[1,2]` \\
+    & \multicolumn{1}{r|}{requires attention} & `r cm_logistic_regression_15$table[2,1]` & `r cm_logistic_regression_15$table[2,2]` \\
 \end{tabular}
 \begin{tabular}{llrl}
     &&& \\
-    &    &   Kappa : &`r round(cm_15$overall[2], 4)`\\
-    &    &   Accuracy :&`r round(cm_15$overall[1], 4)`\\
-    &    &   Sensitivity :&`r round(cm_15$byClass[1], 4)` \\               
-    &    &   Specificity :&`r round(cm_15$byClass[2], 4)`\\
+    &    &   Kappa : &`r round(cm_logistic_regression_15$overall[2], 4)`\\
+    &    &   Accuracy :&`r round(cm_logistic_regression_15$overall[1], 4)`\\
+    &    &   Sensitivity :&`r round(cm_logistic_regression_15$byClass[1], 4)` \\               
+    &    &   Specificity :&`r round(cm_logistic_regression_15$byClass[2], 4)`\\
 \end{tabular}
 \end{center}
 \vspace{1cm}
@@ -537,32 +539,51 @@ ggplot() + ggtitle("Table 5", subtitle = "Confusion Matrix and Statistics for Cl
 
 $\quad$ \textbf{S}upport \textbf{V}ector \textbf{M}achines (SVMs) are a more flexible procedure that enlarges the featrue space using basis expansions. Linear classifiers generally achieve better training class separation in this enlarged space. These classifiers translate to nonlinear classification boundaries in the original space. With SVMs the dimension of the enlarged feature space is allowed to get very large [@hastie_tibshirani_friedman]. 
 
-$\quad$ An SVM model with a _radial_ kernal and a cost parameter of _50_ was fit with the `e1071` package in `R`. The cost paramater was tuned using repeated 10-fold cross validation with the `tune` function in the `e1071` package in `R`. The confusion matrix and prediction statistics are included in Table 5. We see here that classification using a an SVM model yields slightly lower values of accuracy and the Kappa statistic, but still keeps a Kappa value above 0.3.
+$\quad$ Two SVM models were fit using the `svm` function with a _radial_ kernal in the `e1071` package in `R`. The cost paramater was tuned using 10-fold cross validation in the `caret` package. The model fit with 13 predictors was tuned to have a cost parameter of 50 and the model fit with 15 predictors was tuned to have a cost parameter of . The cost paramater was tuned using repeated 10-fold cross validation with the `tune` function in the `e1071` package in `R`. The confusion matrix and prediction statistics are included in Table 5. We see here that classification using a an SVM model yields slightly lower values of accuracy and the Kappa statistic, but still keeps a Kappa value above 0.3.
 
 
 ```{r, echo = F, message = F, warning = F, eval = F}
-## SVM
-set.seed(1)
+##### SVM
 
-# tune
-svm_tune <- tune(svm, status_group~.,
-                 data = train_logistic_regression,
-                 kernel="radial",
-                 tunecontrol = tune.control(nrepeat = 3, cross = 10),
-                 ranges=list(cost=c(30, 40, 50 , 60)))
+#tune cost parameter
+#svm_tune_13 <- tune.svm(status_group ~ . , data = train_13, tuneControl = tune.control(nrepeat = 3, cross = 10), cost = c(20, 25, 30, 35, 40, 45, 50))
+#svm_tune_15 <- tune.svm(status_group ~ . , data = train_13, tuneControl = tune.control(nrepeat = 8, cross = 10), cost = c(45, 50, 60, 70, 80, 90))
 
-print(svm_tune)
+## 3-time, 10-fold CV
+svmCV <- function(train_set, cost) {
+  out <- data.frame(accs = c(NA, NA, NA), kaps = c(NA, NA, NA))
+  for(j in 1:3){
+    folds <- createFolds(train_set$status_group, k = 10, list = TRUE, returnTrain = TRUE)
+    accuracies <- kappas <- c()
+    for (i in 1:10) {
+        model <- svm(status_group~., data = train_set[folds[[i]],], kernel = "radial", cost = cost)
+        predictions <- predict(object = model, newdata = subset(train_set[-folds[[i]],], select = -c(status_group)))
+        cm <- confusionMatrix(predictions, train[-folds[[i]], ]$status_group)
+        accuracies <- c(accuracies, cm$overall[[1]])
+        kappas <- c(kappas, cm$overall[[2]])
+    }
+    out[j,] <- c(mean(accuracies), mean(kappas))
+  }
+  c(Accuracy = mean(out$accs), Kappa = mean(out$kaps))
+}  
 
-model_svm <- svm(status_group ~ ., data=train_logistic_regression, kernel = "radial", cost = 50)
+# get CV accuracy and kappa
+stats_svm_13 <- svmCV(train_13, cost = 40)
+stats_svm_15 <- svmCV(train_15, cost = 90)
 
-summary(model_svm)
+#Train models
+svm_13 <- svm(status_group ~ . , data = train_13, cost = 40)
+svm_15 <- svm(status_group ~ . , data = train_13, cost = 90)
 
-preds_svm <- predict(model_svm, newdata = test_logistic_regression) #predict
-confusionMatrix(preds_svm, test_y)
+#Make predictions & clacuk
+cm_svm_13 <- confusionMatrix(predict(svm_13, newdata = test_13), test_y)
+cm_svm_15 <- confusionMatrix(predict(svm_15, newdata = test_15), test_y)
 ```
 
+
+
 ```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 7}
-ggplot() + ggtitle("Table 5", subtitle = "Confusion Matrix and Statistics for Classifaction by Support Vector Machine (SVM)                                           ") + theme_minimal()
+ggplot() + ggtitle("Table 5", subtitle = "Confusion Matrix and Statistics for Classifaction by Support Vector Machine (SVM) 13 predictors                                           ") + theme_minimal()
 ```
 
 \vspace{1cm}
@@ -571,18 +592,47 @@ ggplot() + ggtitle("Table 5", subtitle = "Confusion Matrix and Statistics for Cl
 \begin{tabular}{l r c c}
     & & \multicolumn{2}{ c }{Reference} \\
     & & functional & requires attention \\ \cline{3-4} 
-    Prediction & \multicolumn{1}{r|}{functional} & 12689 & 4084 \\
-    & \multicolumn{1}{r|}{requires attention} & 7081 & 10604 \\
+    Prediction & \multicolumn{1}{r|}{functional} & 12683 & 4097 \\
+    & \multicolumn{1}{r|}{requires attention} & 7087 & 10591 \\
 \end{tabular}
 \begin{tabular}{llrl}
     &&& \\
-    &    &  Kappa: &0.3545\\
-    &    &  Accuracy :&0.676 \\
-    &    &  Sensitivity :&0.6418 \\               
-    &    &  Specificity :&0.7219\\
+    &    &  Kappa: &0.3533\\
+    &    &  Accuracy :&0.6754 \\
+    &    &  Sensitivity :&0.6415 \\               
+    &    &  Specificity :&0.7211\\
 \end{tabular}
 \end{center}
 \vspace{1cm}
+
+
+
+```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 7}
+ggplot() + ggtitle("Table 6", subtitle = "Confusion Matrix and Statistics for Classifaction by Support Vector Machine (SVM) 15 predictors                                          ") + theme_minimal()
+```
+
+\vspace{1cm}
+\begin{center}
+\footnotesize
+\begin{tabular}{l r c c}
+    & & \multicolumn{2}{ c }{Reference} \\
+    & & functional & requires attention \\ \cline{3-4} 
+    Prediction & \multicolumn{1}{r|}{functional} & 12764 & 4161 \\
+    & \multicolumn{1}{r|}{requires attention} & 7006 & 10527 \\
+\end{tabular}
+\begin{tabular}{llrl}
+    &&& \\
+    &    &  Kappa: &0.3535\\
+    &    &  Accuracy :&0.6759 \\
+    &    &  Sensitivity :&0.6456 \\               
+    &    &  Specificity :&0.7167\\
+\end{tabular}
+\end{center}
+\vspace{1cm}
+
+
+
+
 
 
 ### Random Forest
@@ -823,7 +873,6 @@ beep(2)
    }
  } 
  
-beep(2)
 ```
 
 ```{r, echo = FALSE, eval = F}
@@ -862,6 +911,111 @@ ggplot() + ggtitle("Table 7", subtitle = "Confusion Matrix and Statistics for Cl
 \vspace{2cm}
 
 
+```{r, echo = FALSE, eval = F}
+## STEP 0
+ # create small workable data sets
+ test_15_target <- cbind(test_15, test_y)
+ test_15_small <- test_15_target[sample(nrow(test_15_target), 300),]
+ train_15_small <- train_15
+```  
+  
+  
+```{r, echo = FALSE, eval = F}
+ ### STEP 1
+ # dissimilarity/distance function
+ tau <- 1.5  # set weight for categorical variable distance peice of function
+ lambda <- 3
+ 
+ d_15 <- function(u, x){
+   # categorical variables (11) <-  # of variables that don't match
+   # continuous variables (2) <- euclidean distance
+   # combine linearly and give a wieght to the categorical variable distance so that it has a reasonable amount of say in the distance between the two cases being compared
+   dissimilarity <- sum((u[1:4]-x[1:4])^2) + tau^2*sum(u[5:15] != x[5:15])
+ }
+  
+ # w is the "association matrix" higher values in this matrix indicate a higher association between the train and test cases being compared.
+ w <- matrix(nrow = nrow(test_15_small), ncol = nrow(train_15_small))
+ for(j in 1:nrow(test_15_small)){
+   for(i in 1:nrow(train_15_small)){
+     w[j,i] <- exp(-d_15(subset(test_15_small[j,], select = -c(test_y)), subset(train_15_small, select = -c(status_group))[i,])/lambda)
+   }
+ } 
+```
+
+ 
+ 
+```{r, echo = FALSE, eval = F}
+ ### STEP 2
+ # selection probability matrix
+ p <- matrix(nrow = nrow(test_15_small), ncol = nrow(train_15_small))
+ for(j in 1:nrow(test_15_small)){
+   p[j,] <- w[j,]/apply(w, 1, sum)[j]
+ } 
+```
+ 
+ 
+```{r, echo = FALSE, eval = F}
+ ### STEP 3
+ 
+ B <- 201  # number of samples to take and vote 
+ predictions <- matrix(nrow = nrow(test_15_small), ncol = B)
+ 
+ for(b in 1:B){
+     
+   for(j in 1:nrow(test_15_small)){  
+     
+     q <- 150  #size of weighted bootstrap sample
+     active_set_b <- c()
+     for(l in 1:q){
+       # set presets for flag, index, and cumulative probability
+       flag <- 0
+       index <- 0
+       cum_prob <- 0
+       
+       # simulate a uniform(0,1) rv
+       unif <- runif(1)
+       
+       while(flag == 0){
+         index <- index + 1
+         cum_prob <- cum_prob + p[j,index]
+         
+         if(unif <= cum_prob){
+           flag <- 1
+         }
+       }
+       
+       
+       active_set_b <- rbind(active_set_b, train_15_small[index,])
+       
+     }
+     
+     # if the numeric variables are constant wiggle it a little so the classifier doesn't break
+     if(sd(active_set_b[,1]) == 0){active_set_b[1,1] <- active_set_b[1,1] + 0.001}
+     if(sd(active_set_b[,2]) == 0){active_set_b[1,2] <- active_set_b[1,2] + 0.001}
+     
+ 
+     
+     #### BUILD CLASSIFIER 
+     # SVM
+     if(length(unique(active_set_b$status_group)) == 1){
+       predictions[j,b] <- active_set_b$status_group[1]  
+     }else{
+       model_svm_b <- svm(status_group ~ ., data = active_set_b, kernel="radial", cost = 10)
+       predictions[j, b] <- ifelse(predict(object = model_svm_b, newdata = subset(test_15_small[j,], select = -c(test_y))) == "functional", "functional", "requires attention")
+     }
+   }
+ } 
+ 
+```
+
+```{r, echo = FALSE, eval = F}
+ voting <- function(x){
+   sum(x == "functional")
+ }
+ 
+ preds_assc <- ifelse(apply(predictions, 1, voting) >= (B+1)/2, "functional", "requires attention")
+ confusionMatrix(preds_assc, test_15_small$test_y)
+```
 
 
 ## Discussion  
@@ -875,8 +1029,11 @@ $\quad$
 
 
   
-\pagebreak
+\pagebreak  
+
+
 ## Appendix  
+  
   
 #### Logistic Regression Equation    
 \begin{singlespace}
@@ -916,6 +1073,31 @@ $x_{13}$ = waterpoint\_type  \newline
 \end{singlespace}
 
 \pagebreak  
+
+
 ## References  
 
+
+
+```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 7}
+library(ggplot2)
+ggplot() + ggtitle("Table ?", subtitle = "Compare Models                                           ") + theme_minimal()
+```
+\begin{center}
+\footnotesize
+\begin{tabular}{l l c c c c}
+    & & \multicolumn{2}{ c }{Actual} & \multicolumn{2}{c}{10-Fold CV} \\ \cline{3-6}
+    & Model & Accuracy & Kappa & CV-Accuracy & CV-Kappa \\ \hline
+    \multirow{ 2}{*}{Logistic Regression}& 13 predictors & `r round(cm_logistic_regression_13$overall[1],4)` & `r round(cm_logistic_regression_13$overall[2],4)` & `r round(model_logistic_regression_13_CV$results[2],4)` & `r round(model_logistic_regression_13_CV$results[3],4)` \\ 
+    & 15 predictors & `r round(cm_logistic_regression_15$overall[1],4)` & `r round(cm_logistic_regression_15$overall[2],4)` & `r round(model_logistic_regression_15_CV$results[2],4)` & `r round(model_logistic_regression_15_CV$results[3],4)` \\ \hline
+    \multirow{ 2}{*}{SVM}& 13 predictors & 2 & 2 & 0.8192 & 0.5785 \\ 
+    & 15 predictors & 2 & 2 & 0.8192 & 0.5909 \\ \hline
+    \multirow{ 2}{*}{Random Forest}& 13 predictors & 2 & 2 & 3 & 3 \\ 
+    & 15 predictors & 2 & 2 & 3 & 3 \\ \hline
+    \multirow{ 2}{*}{ASSC-SVM}& 13 predictors & 2 & 2 & - & - \\ 
+    & 15 predictors & 2 & 2 & - & - \\ \hline
+\end{tabular}
+\end{center}
+
+\vspace{2cm}
 
