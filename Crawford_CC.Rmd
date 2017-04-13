@@ -16,11 +16,11 @@ fontsize: 12pt
 
 ```{r, echo = F, message = F, warning = F}
 library(tidyverse)
-library(randomForest)
+#library(randomForest)
 library(caret)
-library(e1071)
+#library(e1071)
 library(sampling)
-library(kernlab)
+#library(kernlab)
 set.seed(42)
 options(scipen = 999)
 
@@ -141,6 +141,8 @@ $\quad$ Hypothetically, consider that until very recently the organization respo
   
   
 $\quad$ Now, suppose the organization has acquired resources to hire a few new employees who will devote their time to monitoring and managing water points with less densely populated surrounding areas. The organization needs to use these few employees in a very strategic way. There are many, many wells that will fall under this group's jurisdiction and they need to target pumps that are likely broken, or need repairs. The organization doesn't want to waste time sending these employees all over the country to check on pumps that are functional. Using what we know about the status of the pumps that have been monitored (the "high risk" pumps), we need to predict which of the relatively new pumps that are located in less densely populated areas will require the attention of the new employees (i.e. the pumps that need repairs, or are broken).
+
+\pagebreak
 
 
 ### Structural Changes to the Data
@@ -363,7 +365,7 @@ test_13 <- droplevels(test_13)
 
 $\quad$ There are many groups of variables in the data that are meant to give the same information at different levels of detail. For example, the variables `source`, `source_type`, and `source_class` all provide information about the water source feeding the water point. These variables are all coded as factors. The `source_class` variable gives very general, high level information while `source_type` is a bit less general, giving a moderate amount of detail. The `source` variable is the most detailed of the three. Table 2 shows the unique values each of these variables can take. These variables are highly correlated and will clearly introduce multicollinearity during the modeling process. For variable groups like these, the one providing what we judge to be the most appropriate level of detail is chosen using visual comparison and numerical summaries. For the three variables discussed here, `source_type` was chosen as the most appropriate to inform the subsequent models about the water source feeding the water point. A bar plot of the `source_type` variable, colored by the target variable, `status_group`, in the training data can be found in Figure 5.
 
-\vspace{1cm}
+\pagebreak
 
 ```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 9}
 ggplot() + ggtitle("Table 2", subtitle = "Unique Values in each of the Variables that Provide Water Source Information                     ") + theme_minimal()
@@ -398,7 +400,7 @@ ggplot(data = data) + geom_bar(aes(x = source_type, fill=status_group)) +
 
 \vspace{1cm}
 
-$\quad$ There are variables in the data set that appear to be manually maintained and have too many unique values to be managable. These variables were eliminated as well as any variables with only one unique value. The `population` and `construction_year` variables were removed because they were used to create the split between training and testing data sets. All variables, except `basin`, providing information on the location of the water point were eliminated and few other variables were excluded for lack of predictive power. Basin was kept because it gives information on the geographic location of the water points with regard to the water basin they pull from. The data began with 40 feature columns (excluding the target variable, `status_group`). After feature selection, the resulting data set has 13 feature columns and the target variable. Table 3 is a compilation of the final 13 features, their descriptions, and values that each can take.   
+$\quad$ There are variables in the data set that appear to be manually maintained and have too many unique values to be managable. These variables were eliminated as well as any variables with only one unique value. All variables, except `basin`, providing information on the location of the water point were eliminated and few other variables were excluded for lack of predictive power. Basin was kept because it gives information on the geographic location of the water points with regard to the water basin they pull from. The data began with 40 feature columns (excluding the target variable, `status_group`). After feature selection, the resulting data set has 15 feature columns and the target variable. Since the `population` and `construction_year` variables were used to create the split between training and testing data sets it will be interesting to fit models with and without these variables to compare performance. Table 3 is a compilation of the final 15 features, their descriptions, and values that each can take.
 
 
 
@@ -406,13 +408,16 @@ $\quad$ There are variables in the data set that appear to be manually maintaine
 
 
 ```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 7}
-ggplot() + ggtitle("Table 3", subtitle = "Final Set of Predictor Variables                                                                                                                             ") + theme_minimal()
+ggplot() + ggtitle("Table 3", subtitle = "Final Set of Predictor Variables                                                                                                                                       ") + theme_minimal()
 ```
+\vspace{-5mm}
 \begin{singlespace}
 \begin{center}
 \footnotesize
 \begin{tabular}{l l p{7cm}}
   Variable Name & Values & Description  \\ \hline
+  \textit{population*} & Numeric, (1, 30500) & Population around the well\\
+  \textit{construction\_year*} & Numeric, (1960, 2013) & Year the waterpoint was constructed\\
   amount\_tsh & Numeric, (0, 200000) & Total static head amount (amount of water available to the water point)\\
   gps\_height & Numeric, (-90.0, 2232.0) & Altitude of the well \\ 
   basin & Factor, 9 levels & Geographic water basin the water point draws from \\
@@ -429,17 +434,27 @@ ggplot() + ggtitle("Table 3", subtitle = "Final Set of Predictor Variables      
 \hline
 \end{tabular}
 \end{center}
+
+\footnotesize
+\begin{tabular}{l}
+  \textit{*Variables used to create split between training and testing sets.                                                                                                                                     }\\
+  \end{tabular}
+
 \end{singlespace}
 \vspace{1cm}
 
 
 
+
+
 ## Analysis
-Four prediction methods are detailed in the following portion of the paper. Each model was built on the "cornered" training data set and used to predict water points in the testing set.
+Four prediction methods are detailed in the following portion of the paper. Each model was built on the "cornered" training data set excluding the `population` and `construction_year` variables (13 predictors) and again with the variables included (15 predictors). 
 
 
 ### Logistic Regression
-Logistic regression has a long history in the field of statistics and is one of the most widely used source of classifiers [@james_witten_hastie_tibshirani]. In general, it is a method of estimating conditional probabilities as a function of explanatory variables and regression coefficients, and is often used to classify binary response data which is how we will apply it here. A logistic regression model was fit to the training data using the `glm` function in `R`. For logistic regression, categorical variables (stored as `factors` in `R`) are expanded into binary indicator variables. The full equation can be found in the appendix.  Using the model to classify each water pump in the testing set yields the confusion matrix and statistics in Table 4. The largest advantages of implementing a logistic regression model are interpretability and computational convenience. Since we are extrapolating, the relatively low values of Accuracy, Sensitivity, and Specificity are not surprising. Kuhn and Johnson (2013) write that Kappa values within 0.30 to 0.50 indicate reasonable agreement, so although it is on the low end, we are not so dissatisfied with the Kappa statistic of 0.3703.  
+$\quad$ Logistic regression has a long history in the field of statistics and is one of the most widely used source of classifiers [@james_witten_hastie_tibshirani]. In general, it is a method of estimating conditional probabilities as a function of explanatory variables and regression coefficients, and is often used to classify binary response data which is how we will apply it here. Two logistic regression models were fit to the training data using the `glm` function in `R`. For logistic regression, categorical variables (stored as `factors` in `R`) are expanded into binary indicator variables. The full equations for the 13 predictor, and 15 predictor models can both be found in the appendix.   
+
+$\quad$ Using the 13 predictor and 15 predictor models to classify water pumps in the testing set yields the confusion matrices and statistics in Tables 4 and 5 respectively. The largest advantages of implementing a logistic regression model are interpretability and computational convenience. Since we are extrapolating, the relatively low values of Accuracy, Sensitivity, and Specificity are not surprising. Kuhn and Johnson (2013) write that Kappa values within 0.30 to 0.50 indicate reasonable agreement, so although they are on the low end, we are not so dissatisfied with the Kappa statistics of 0.3703 and 0.3748. 10-Fold cross validation results are reported in Table 10.
 
 ```{r, echo = F, message = F, warning = F}
 # ## LOGISTIC REGRESSION
@@ -456,7 +471,7 @@ Logistic regression has a long history in the field of statistics and is one of 
 ```
 
 
-```{r, echo = F, message = F, warning = F}
+```{r, echo = F, message = F, warning = F, eval=F}
 ## LOGISTIC REGRESSION
 
 ### Cross-Validation
@@ -488,7 +503,7 @@ cm_logistic_regression_13 <- confusionMatrix(data=preds_logistic_regression_13, 
 
 
 ```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 7}
-ggplot() + ggtitle("Table 4", subtitle = "Confusion Matrix and Statistics for Classification by Logistic Regression with 13 predictors                                          ") + theme_minimal()
+ggplot() + ggtitle("Table 4", subtitle = "Confusion Matrix and Statistics for Classification by Logistic Regression with 13 Predictor Variables                                          ") + theme_minimal()
 ```
 
 \begin{center}
@@ -496,22 +511,22 @@ ggplot() + ggtitle("Table 4", subtitle = "Confusion Matrix and Statistics for Cl
 \begin{tabular}{l r c c}
     & & \multicolumn{2}{ c }{Reference} \\
     & & functional & requires attention \\ \cline{3-4} 
-    Prediction & \multicolumn{1}{r|}{functional} & `r cm_logistic_regression_13$table[1,1]` & `r cm_logistic_regression_13$table[1,2]` \\
-    & \multicolumn{1}{r|}{requires attention} & `r cm_logistic_regression_13$table[2,1]` & `r cm_logistic_regression_13$table[2,2]` \\
+    Prediction & \multicolumn{1}{r|}{functional} & 13138 & 4206 \\
+    & \multicolumn{1}{r|}{requires attention} & 6632 & 10482 \\
 \end{tabular}
 \begin{tabular}{llrl}
     &&& \\
-    &    &   Kappa :&`r round(cm_logistic_regression_13$overall[2], 4)`\\
-    &    &   Accuracy :&`r round(cm_logistic_regression_13$overall[1], 4)`\\
-    &    &   Sensitivity :&`r round(cm_logistic_regression_13$byClass[1], 4)` \\               
-    &    &   Specificity :&`r round(cm_logistic_regression_13$byClass[2], 4)`\\
+    &    &   Kappa :&0.3703\\
+    &    &   Accuracy :&0.6855\\
+    &    &   Sensitivity :&0.6645 \\               
+    &    &   Specificity :&0.7136\\
 \end{tabular}
 \end{center}
 \vspace{1cm}
 
 
 ```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 7}
-ggplot() + ggtitle("Table 5", subtitle = "Confusion Matrix and Statistics for Classification by Logistic Regression with 15 predictors                                           ") + theme_minimal()
+ggplot() + ggtitle("Table 5", subtitle = "Confusion Matrix and Statistics for Classification by Logistic Regression with 15 Predictor Variables                                           ") + theme_minimal()
 ```
 
 \begin{center}
@@ -519,15 +534,15 @@ ggplot() + ggtitle("Table 5", subtitle = "Confusion Matrix and Statistics for Cl
 \begin{tabular}{l r c c}
     & & \multicolumn{2}{ c }{Reference} \\
     & & functional & requires attention \\ \cline{3-4} 
-    Prediction & \multicolumn{1}{r|}{functional} & `r cm_logistic_regression_15$table[1,1]` & `r cm_logistic_regression_15$table[1,2]` \\
-    & \multicolumn{1}{r|}{requires attention} & `r cm_logistic_regression_15$table[2,1]` & `r cm_logistic_regression_15$table[2,2]` \\
+    Prediction & \multicolumn{1}{r|}{functional} & 13302 & 4271 \\
+    & \multicolumn{1}{r|}{requires attention} & 6468 & 10417 \\
 \end{tabular}
 \begin{tabular}{llrl}
     &&& \\
-    &    &   Kappa : &`r round(cm_logistic_regression_15$overall[2], 4)`\\
-    &    &   Accuracy :&`r round(cm_logistic_regression_15$overall[1], 4)`\\
-    &    &   Sensitivity :&`r round(cm_logistic_regression_15$byClass[1], 4)` \\               
-    &    &   Specificity :&`r round(cm_logistic_regression_15$byClass[2], 4)`\\
+    &    &   Kappa : &0.3748\\
+    &    &   Accuracy :&0.6883\\
+    &    &   Sensitivity :&0.6728\\               
+    &    &   Specificity :&0.7092\\
 \end{tabular}
 \end{center}
 \vspace{1cm}
@@ -537,9 +552,9 @@ ggplot() + ggtitle("Table 5", subtitle = "Confusion Matrix and Statistics for Cl
 ### Support Vector Machine (SVM)
 
 
-$\quad$ \textbf{S}upport \textbf{V}ector \textbf{M}achines (SVMs) are a more flexible procedure that enlarges the featrue space using basis expansions. Linear classifiers generally achieve better training class separation in this enlarged space. These classifiers translate to nonlinear classification boundaries in the original space. With SVMs the dimension of the enlarged feature space is allowed to get very large [@hastie_tibshirani_friedman]. 
+$\quad$ \textbf{S}upport \textbf{V}ector \textbf{M}achines (SVMs) are a more flexible procedure that enlarges the feature space using basis expansions. Linear classifiers generally achieve better training class separation in this enlarged space. These classifiers translate to nonlinear classification boundaries in the original space. The dimension of the enlarged feature space is allowed to get very large [@hastie_tibshirani_friedman]. 
 
-$\quad$ Two SVM models were fit using the `svm` function with a _radial_ kernal in the `e1071` package in `R`. The cost paramater was tuned using 10-fold cross validation in the `caret` package. The model fit with 13 predictors was tuned to have a cost parameter of 50 and the model fit with 15 predictors was tuned to have a cost parameter of . The cost paramater was tuned using repeated 10-fold cross validation with the `tune` function in the `e1071` package in `R`. The confusion matrix and prediction statistics are included in Table 5. We see here that classification using a an SVM model yields slightly lower values of accuracy and the Kappa statistic, but still keeps a Kappa value above 0.3.
+$\quad$ Two SVM models were fit using the `svm` function with a radial kernal in the `e1071` package in `R`. Cost paramaters for each model were tuned using 10-fold cross validation. The model fit with 13 predictors was fit with a cost parameter of 40 and the model fit with 15 predictors with a cost parameter of 90. Confusion matrices and prediction statistics are included in Tables 6 and 7. We notice that classification using these SVM models yields slightly lower values of Accuracy and Kappa statistics, but the Kappa values both remain above 0.3. 10-Fold cross validation results are in Table 10.
 
 
 ```{r, echo = F, message = F, warning = F, eval = F}
@@ -583,10 +598,8 @@ cm_svm_15 <- confusionMatrix(predict(svm_15, newdata = test_15), test_y)
 
 
 ```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 7}
-ggplot() + ggtitle("Table 5", subtitle = "Confusion Matrix and Statistics for Classifaction by Support Vector Machine (SVM) 13 predictors                                           ") + theme_minimal()
+ggplot() + ggtitle("Table 6", subtitle = "Confusion Matrix and Statistics for Classifaction by Support Vector Machine (SVM) with 13 Predictor Variables                                           ") + theme_minimal()
 ```
-
-\vspace{1cm}
 \begin{center}
 \footnotesize
 \begin{tabular}{l r c c}
@@ -608,10 +621,8 @@ ggplot() + ggtitle("Table 5", subtitle = "Confusion Matrix and Statistics for Cl
 
 
 ```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 7}
-ggplot() + ggtitle("Table 6", subtitle = "Confusion Matrix and Statistics for Classifaction by Support Vector Machine (SVM) 15 predictors                                          ") + theme_minimal()
+ggplot() + ggtitle("Table 7", subtitle = "Confusion Matrix and Statistics for Classifaction by Support Vector Machine (SVM) with 15 Predictor Variables                                          ") + theme_minimal()
 ```
-
-\vspace{1cm}
 \begin{center}
 \footnotesize
 \begin{tabular}{l r c c}
@@ -636,9 +647,9 @@ ggplot() + ggtitle("Table 6", subtitle = "Confusion Matrix and Statistics for Cl
 
 
 ### Random Forest
-$\quad$ Random forest is a tree-based method that can be used for classification. This algorithm builds a number of decision trees on bootstrapped training samples. During building, at each node (or split) of each tree, radomly select a subset of the input features and find an optimal single split. For each tree, repeat splitting in this fashion up to a fixed depth or until no single split improvement is possible without creating a split resulting in a small number of cases. Many trees are built in this fashion, then aggregated [@james_witten_hastie_tibshirani]
+$\quad$ Random forest is a tree-based method that can be used for classification. This algorithm builds a number of decision trees on bootstrapped training samples. During building, at each node (or split) of each tree, the algorithm radomly selects a subset of the input features and finds an optimal single split. For each tree, we repeat splitting in this fashion up to a fixed depth or until no single split improvement is possible without creating a split resulting in a small number of cases. Many trees are built in this fashion, then aggregated [@james_witten_hastie_tibshirani].
 
-$\quad$ A random forest model was trained using the `randomForest` function from the `randomForest` package in `R`. The parameter `mtry` determines the number of features randomly sampled as candidates at each split. An `mtry` value of 6 was tuned using `tuneRF`, a function that is also from the `randomForest` package which searches to the left and right of the default `mtry` value (which in this case is 3) to minimize out of bag (OOB) error. The resulting confusion matrix and statistics are in Table 6. We see that both logistic regression and SVMs outperform the random forest according to the Accuracy and Kappa values. Additionally, the sensitivity value of 0.5945 is notably low.
+$\quad$ Two random forest models were trained using the `randomForest` function from the `randomForest` package in `R`. The parameter `mtry` determines the number of features randomly sampled as candidates at each split. Again using 10-fold cross validation, the model fit with 13 predictor variables was optimized at an `mtry` value of 3 and the model fit with 15 predictor variables at 4. The resulting confusion matrices and statistics for these two models are in Tables 8 and 9. 10-Fold cross validation results are in Table 10.
 
 ```{r, warning=F, message = F, echo = F, fig.height=4, fig.width=7, eval = F}
 rf_tune <- tuneRF(x = train_logistic_regression[,2:13], y = train_logistic_regression[,1], ntreeTry = 500, plot = F)
@@ -654,39 +665,98 @@ ggplot(data = as.data.frame(rf_tune)) + geom_point(aes(x = mtry, y = OOBError)) 
 
 
 ```{r, warning = F, message = F, echo = F, eval = F}
-set.seed(1)
+set.seed(4)
+#rf_tune <- tuneRF(x = subset(train_13, select = c(-status_group)), y = train_13$status_group, ntreeTry = 500)
+
+## 3-time, 10-fold CV
+rfCV <- function(train_set, mtry) {
+  out <- data.frame(accs = c(NA, NA, NA), kaps = c(NA, NA, NA))
+  for(j in 1:3){
+    folds <- createFolds(train_set$status_group, k = 10, list = TRUE, returnTrain = TRUE)
+    accuracies <- kappas <- c()
+    for (i in 1:10) {
+        model <- randomForest(status_group ~ ., data = train_set[folds[[i]],], importance = T, ntree = 1500, mtry = mtry)
+        predictions <- predict(object = model, newdata = subset(train_set[-folds[[i]],], select = -c(status_group)))
+        cm <- confusionMatrix(predictions, train[-folds[[i]], ]$status_group)
+        accuracies <- c(accuracies, cm$overall[[1]])
+        kappas <- c(kappas, cm$overall[[2]])
+        print(i)
+    }
+    out[j,] <- c(mean(accuracies), mean(kappas))
+  }
+  c(Accuracy = mean(out$accs), Kappa = mean(out$kaps))
+}  
 
 
-rf_tune <- tuneRF(x = train_logistic_regression[,2:13], y = train_logistic_regression[,1], ntreeTry = 500)
+# CV in caret to choose mtry
+control <- trainControl(method="repeatedcv", number=10, repeats=3, search="grid")
+tunegrid <- expand.grid(.mtry=c(1:15))
+rf_gridsearch <- train(status_group~., data=train_13, method="rf", metric="Kappa", tuneGrid=tunegrid, trControl=control)
+rf_gridsearch_15 <- train(status_group~., data=train_15, method="rf", metric="Kappa", tuneGrid=tunegrid, trControl=control)
+# Use CVed random forest to predict the values in test
+preds_forest_13_CV <- predict(rf_gridsearch, test_13)
+preds_forest_15_CV <- predict(rf_gridsearch_15, test_15)
+# CMs for CV models
+confusionMatrix(preds_forest_13_CV, test_y)
+confusionMatrix(preds_forest_15_CV, test_y)
 
-model_forest <- randomForest(status_group ~ ., data = train_logistic_regression, importance = T, ntree = 1500, mtry = 6)
-
+# build models
+model_forest_13 <- randomForest(status_group ~ ., data = train_13, importance = T, ntree = 1500, mtry = 3)
+model_forest_15 <- randomForest(status_group ~ ., data = train_15, importance = T, ntree = 1500, mtry = 4)
 # Use random forest to predict the values in test
-preds_forest <- predict(model_forest, test_logistic_regression)
-confusionMatrix(preds_forest, test_y)
-
-importance(model_forest)
+preds_forest_13 <- predict(model_forest_13, test_13)
+preds_forest_15 <- predict(model_forest_15, test_15)
+# CMs for randomForest models
+confusionMatrix(preds_forest_13, test_y)
+confusionMatrix(preds_forest_15, test_y)
+# ACC and Kappa for randomForest
+stats_rf_13_3 <- rfCV(train_13, 3) # ac = 0.6682, k = 0.3413
+stats_rf_15_4 <- rfCV(train_15, 4) # Kappa: 0.355 , Accuracy :0.678
 ```
 \vspace{1cm} 
 
 
 ```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 7}
-ggplot() + ggtitle("Table 6", subtitle = "Confusion Matrix and Statistics for Classifaction by Random Forest                                           ") + theme_minimal()
+ggplot() + ggtitle("Table 8", subtitle = "Confusion Matrix and Statistics for Classifaction by Random Forest 13 Predictor Variables                                           ") + theme_minimal()
 ```
 \begin{center}
 \footnotesize
 \begin{tabular}{l r c c}
     & & \multicolumn{2}{ c }{Reference} \\
     & & functional & requires attention \\ \cline{3-4} 
-    Prediction & \multicolumn{1}{r|}{functional} & 11771 & 3799 \\
-    & \multicolumn{1}{r|}{requires attention} & 7999 & 10889 \\
+    Prediction & \multicolumn{1}{r|}{functional} & 12533 & 4097 \\
+    & \multicolumn{1}{r|}{requires attention} &  7237 & 10591 \\
 \end{tabular}
 \begin{tabular}{llrl}
     &&& \\
-    &    &   Kappa: &0.3248\\
-    &    &   Accuracy :&0.6576\\
-    &    &   Sensitivity :&0.5954 \\               
-    &    &   Specificity :&0.7414\\
+    &    &   Kappa: &0.3455 \\
+    &    &   Accuracy :&0.6711\\
+    &    &   Sensitivity :&0.6339\\         
+    &    &   Specificity :&0.7211\\
+\end{tabular}
+\end{center}
+
+
+\vspace{1cm} 
+
+
+```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 7}
+ggplot() + ggtitle("Table 9", subtitle = "Confusion Matrix and Statistics for Classifaction by Random Forest 15 Predictor Variables                                           ") + theme_minimal()
+```
+\begin{center}
+\footnotesize
+\begin{tabular}{l r c c}
+    & & \multicolumn{2}{ c }{Reference} \\
+    & & functional & requires attention \\ \cline{3-4} 
+    Prediction & \multicolumn{1}{r|}{functional} & 13083 & 4373 \\
+    & \multicolumn{1}{r|}{requires attention} & 6687 & 10315 \\
+\end{tabular}
+\begin{tabular}{llrl}
+    &&& \\
+    &    &   Kappa: &0.3568\\
+    &    &   Accuracy :&0.6790\\
+    &    &   Sensitivity :&0.6618 \\               
+    &    &   Specificity :&0.7023 \\
 \end{tabular}
 \end{center}
 
@@ -694,12 +764,12 @@ ggplot() + ggtitle("Table 6", subtitle = "Confusion Matrix and Statistics for Cl
 
 ### Active Set Selection Classification (ASSM)
 
-$\quad$ Dataset shift is a common problem in predictive analytics that presents itself in many practical applications. This phenomenon occurs when the joint distribution of inputs and outputs differs between training and testing stages of predictive modeling. It may be present for a variety of reasons such as the inability to reproduce testing conditions during training, or because experimental design introduces bias. In the real world, it is often the case that the conditions under which we use the models that we develop will differ from the conditions in which the model was developed. Environments are generally nonstationary and while "textbook" predictive machine learning algorithms are powerful, they generally ignore these differences. [@dataset_shift]   
+$\quad$ Dataset shift is a common problem in predictive analytics that presents itself in many practical applications. This phenomenon occurs when the joint distribution of inputs and outputs differs between training and testing stages of predictive modeling. It may be present for a variety of reasons such as the inability to reproduce testing conditions during training, or because experimental design introduces bias. In the real world, it is often the case that the conditions under which we use the models that we develop will differ from the conditions in which the model was developed. Environments are generally nonstationary and while "textbook" predictive machine learning algorithms are powerful, they generally ignore these differences [@dataset_shift].   
 
 $\quad$ \textbf{A}ctive \textbf{S}et \textbf{S}election \textbf{C}lassification (ASSM) is the next classification method we will consider. ASSM is introduced by Wen Zhou in Chapter 4 of his doctoral dissertation [@rick]. The chapter discusses the covariate shift problem, which is a particular type of dataset shift where the distribution of feature vectors are possibly different between training and testing sets. By training existing classifiers using subsets of training data that are similar (in some sense) to the training cases, one is able to mitigate a large amount of the effect brought on by the covariate shift problem. ASSM is felixible and can be used with existing methods of classification. Zhou details the ASSM algorithm in Algorithm 4.2.2 of his paper. Here we implement ASSC with an SVM classifier (ASSM-SVM) in the same fashion, substituting our own functions and parameters in the algorithm as follows.  
  
 
-$\quad$ First, lay the notational groundwork used in Algorithm 4.2.2 of Zhou (2014). Consider the training set $\mathcal{T}$ with $n = 2,886$ (labeled) observations $\{(Y_i, \mathbf{X}_i) \}_{i = 1}^n$ where $Y_i$ are the corresponding class labels and $\mathbf{X}_i$ are $p$-dimensional feature vectors. Recall that for the well data, $p=13$. Also consider the testing (or predicting) set $\mathcal{P}$ with $m$ (unlabeled) observations $\{\mathbf{U}_j \}_{j = 1}^m$ which are $p$-dimensional feature vectors to be classified. The algorithm is very computationally expensive, so for demonstrative purposes I will simply consider a random subset of size $m = 300$ from $\mathcal{T}$.  
+$\quad$ First, lay the notational groundwork used in Algorithm 4.2.2 of Zhou (2014). Consider the training set $\mathcal{T}$ with $n = 2886$ (labeled) observations $\{(Y_i, \mathbf{X}_i) \}_{i = 1}^n$ where $Y_i$ are the corresponding class labels and $\mathbf{X}_i$ are $p$-dimensional feature vectors. Recall that for the well data we consider both the cases of $p=13$ and $p=15$ (training data excluding and including `population` and `construction_year` variables respectively). Also consider the testing (or predicting) set $\mathcal{P}$ with $m$ (unlabeled) observations $\{\mathbf{U}_j \}_{j = 1}^m$ which are $p$-dimensional feature vectors to be classified. The algorithm is extremely computationally expensive, so for demonstrative purposes I will simply consider a random subset of size $m = 300$ from $\mathcal{T}$ to evaluate both .  
 
 
 Step 1.   
@@ -714,16 +784,16 @@ $$
  
  
  
-> where $\lambda$ can be thought of as a tuning parameter, and $d_k(u,x)$ denotes a distance (or dissimilarity) function of $u$ and $x$ on the $k^{th}$ coordinate of the feature vector. That is, for standardized numeric features `amount_tsh` and `pgs_height` ($k = 1,2$) use Euclidean distance $$d_{k=1,2}(u,x) = \sqrt{(u_{jk} - x_{ik})^2}.$$ 
+> where $\lambda$ can be thought of as a tuning parameter, and $d_k(u,x)$ denotes a distance (or dissimilarity) function of $u$ and $x$ on the $k^{th}$ coordinate of the feature vector. For standardized numeric features use Euclidean distance $$d_k(u,x) = \sqrt{(u_{jk} - x_{ik})^2}.$$ 
    
-> All other features ($k = 3, \hdots, 13$) are categorical. Use the following weighted degree-of-difference measure to assess dissimilarity for these features. __reference5__ (Hastie, Tibshirani, Friedman)   
-\[ d_{k = 3, \hdots, 13}(u,x) = \tau \mbox{ I}[u_{jk} \ne x_{ik}] = \tau \left\{
+> For all other categorical features use the following weighted degree-of-difference measure to assess dissimilarity for these features [@hastie_tibshirani_friedman]
+\[ d_k(u,x) = \tau \mbox{ I}[u_{jk} \ne x_{ik}] = \tau \left\{
 \begin{array}{ll}
       1 & u_{jk} \ne x_{ik} \\
       0 & u_{jk} = x_{ik} \\
 \end{array} 
 \right., \]
-where $\tau$ is the weight we will give to a pair of dissimilar categorical features at every coordinate $k = 3, \hdots, 13$.
+where $\tau$ is the weight we will give to a pair of dissimilar categorical features at every coordinate of a categorical variables $k$.
 Thus, we compute each $[w_{ji}]_{j=1;i=1}^{m,n}$ as  
 $$  
 w_{ji}=\mbox{exp}\left \{ - \ddfrac{\sum_{k=1}^{2}(u_{jk} - x_{ik})^2 + \tau^2\sum_{k=3}^{13}\mbox{ I}[u_{jk} \ne x_{ik}]}{\lambda}   \right \}.
@@ -775,7 +845,30 @@ Step 4.
 
 
 
-$\quad$ Implementing this algorithm using a random sample of size $m = 200$ from $\mathcal{P}$ with parameters $B = 201$, $q = 100$, $\tau = 1.5$, $\lambda = 5$ yields the confusion matrix and statistics in Table 7. Because a subset of the testing cases were used the reference distribution of `functional` and `requires attention` wells will likely differ from the overall distribution for the entire set $\mathcal{P}$ (i.e. the no information rates will differ). Because the Kappa statistic takes into account the accuracy that would be generated simply by chance [@kuhn_johnson] it can be used to compare accross the models presented here. Notice that the Kappa statistic of 0.3624 is higher than that of SVM and random forest. Thus, by fitting an SVM classifier to $B = 201$ weighted bootstrap samples of (only) size $q = 100$ and letting each classifier vote to make a final prediction for each test case, we are able to outperform both SVM and random forst which were both optimally tuned. Particularly interesting is that the ASSC-SVM outperformed the optimally tuned SVM which implies that ASSC does alter the decision boundary based on the predicting set [@rick].
+$\quad$ First, we implement this algorithm using a random sample of size $m = 300$ from $\mathcal{P}$ with 13 predictor variables using parameters $B = 201$, $q = 150$, $\tau = 1.8$, $\lambda = 4$. This process is repeated three times and the averaged Accuracy and Kappa statistics can be found near the bottom of Table 10. Then, we implement this algorithm using a random sample of size $m = 300$ from $\mathcal{P}$ with 15 predictor variables using parameters $B = 201$, $q = 150$, $\tau = 1.5$, $\lambda = 3$. This process is also repeated three times and the averaged Accuracy and Kappa statistics are summarized in the last row of Table 10. Cross validation was not performed on ASSC-SVM models.
+
+$\quad$ Because a subset of the testing cases were used in runs of this algorithm, the reference distribution of `functional` and `requires attention` wells will likely differ from the overall distribution for the entire set $\mathcal{P}$ (i.e. the no information rates will differ for subsets of $\mathcal{P}$). , While the Accuracy values are certainly informative, they may be a bit misleading. Because the Kappa statistic takes into account the accuracy that would be generated simply by chance [@kuhn_johnson] it can be used to compare ASSC-SVM models to eachother as well as to all other models presented here.
+
+\vspace{10mm}
+```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 7}
+library(ggplot2)
+ggplot() + ggtitle("Table 10", subtitle = "Actual and 10-fold Cross Validation Accuracies and Kappa Statistics for Comparison of All Models Presented               ") + theme_minimal()
+```
+\begin{center}
+\footnotesize
+\begin{tabular}{l l c c c c}
+    & & \multicolumn{2}{ c }{Actual} & \multicolumn{2}{c}{10-Fold CV} \\ \cline{3-6}
+    & Model & Accuracy & Kappa & CV-Accuracy & CV-Kappa \\ \hline
+    \multirow{ 2}{*}{Logistic Regression}& 13 Predictors & 0.6855 & 0.3703 & 0.7861 & 0.5148 \\ 
+    & 15 Predictors & 0.6883 & 0.3748 & 0.7911 & 0.5251 \\ \hline
+    \multirow{ 2}{*}{SVM}& 13 Predictors & 0.6754 & 0.3533 & 0.8192 & 0.5785 \\ 
+    & 15 Predictors & 0.6759 & 0.3535 & 0.8192 & 0.5909 \\ \hline
+    \multirow{ 2}{*}{Random Forest}& 13 Predictors & 0.6711 & 0.3455 & 0.8432 & 0.6414 \\ 
+    & 15 Predictors & 0.6790 & 0.3568 & 0.8433 & 0.6384 \\ \hline
+    \multirow{ 2}{*}{ASSC-SVM}& 13 Predictors & ?0.7(1.5more) & ?0.4(1.5more) & - & - \\ 
+    & 15 Predictors & 0.7233(1more) & 0.4424(1more) & - & - \\ \hline
+\end{tabular}
+\end{center}
 
 ```{r, echo = FALSE, eval = F}
 ## STEP 0
@@ -887,28 +980,9 @@ beep(2)
 \vspace{1cm} 
 
 
-```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 7}
-# library(ggplot2)
-ggplot() + ggtitle("Table 7", subtitle = "Confusion Matrix and Statistics for Classifaction by ASSCSVM                                           ") + theme_minimal()
-```
-\begin{center}
-\footnotesize
-\begin{tabular}{l r c c}
-    & & \multicolumn{2}{ c }{Reference} \\
-    & & functional & requires attention \\ \cline{3-4} 
-    Prediction & \multicolumn{1}{r|}{functional} & 96 & 37 \\
-    & \multicolumn{1}{r|}{requires attention} & 59 & 108 \\
-\end{tabular}
-\begin{tabular}{llrl}
-    &&& \\
-    &    &   Kappa :&0.3624\\
-    &    &   Accuracy :&0.68\\
-    &    &   Sensitivity :&0.6194 \\               
-    &    &   Specificity :&0.7448\\
-\end{tabular}
-\end{center}
 
 \vspace{2cm}
+
 
 
 ```{r, echo = FALSE, eval = F}
@@ -1018,10 +1092,110 @@ ggplot() + ggtitle("Table 7", subtitle = "Confusion Matrix and Statistics for Cl
 ```
 
 
-## Discussion  
-$\quad$ 
+## ASSC-SVM run Apr 12 night
+```{r, echo = FALSE, eval = F}
+## STEP 0
+ # create small workable data sets
+ test_13_target <- cbind(test_13, test_y)
+ test_13_small <- test_13_target[sample(nrow(test_13_target), 300),]
+ train_13_small <- train_13
 
-\vspace{2cm}
+ 
+ ### STEP 1
+ # dissimilarity/distance function
+ tau <- 1.8  # set weight for categorical variable distance peice of function
+ lambda <- 4
+ 
+ d_13 <- function(u, x){
+   # categorical variables (11) <-  # of variables that don't match
+   # continuous variables (2) <- euclidean distance
+   # combine linearly and give a wieght to the categorical variable distance so that it has a reasonable amount of say in the distance between the two cases being compared
+   dissimilarity <- sum((u[1:2]-x[1:2])^2) + tau^2*sum(u[3:13] != x[3:13])
+ }
+  
+ # w is the "association matrix" higher values in this matrix indicate a higher association between the train and test cases being compared.
+ w <- matrix(nrow = nrow(test_13_small), ncol = nrow(train_13_small))
+ for(j in 1:nrow(test_13_small)){
+   for(i in 1:nrow(train_13_small)){
+     w[j,i] <- exp(-d_13(subset(test_13_small[j,], select = -c(test_y)), subset(train_13_small, select = -c(status_group))[i,])/lambda)
+   }
+ } 
+
+ 
+ ### STEP 2
+ # selection probability matrix
+ p <- matrix(nrow = nrow(test_13_small), ncol = nrow(train_13_small))
+ for(j in 1:nrow(test_13_small)){
+   p[j,] <- w[j,]/apply(w, 1, sum)[j]
+ } 
+
+ ### STEP 3
+ 
+ B <- 201  # number of samples to take and vote 
+ predictions <- matrix(nrow = nrow(test_13_small), ncol = B)
+ 
+ for(b in 1:B){
+     
+   for(j in 1:nrow(test_13_small)){  
+     
+     q <- 150  #size of weighted bootstrap sample
+     active_set_b <- c()
+     for(l in 1:q){
+       # set presets for flag, index, and cumulative probability
+       flag <- 0
+       index <- 0
+       cum_prob <- 0
+       
+       # simulate a uniform(0,1) rv
+       unif <- runif(1)
+       
+       while(flag == 0){
+         index <- index + 1
+         cum_prob <- cum_prob + p[j,index]
+         
+         if(unif <= cum_prob){
+           flag <- 1
+         }
+       }
+       
+       
+       active_set_b <- rbind(active_set_b, train_13_small[index,])
+       
+     }
+     
+     # if the numeric variables are constant wiggle it a little so the classifier doesn't break
+     if(sd(active_set_b[,1]) == 0){active_set_b[1,1] <- active_set_b[1,1] + 0.001}
+     if(sd(active_set_b[,2]) == 0){active_set_b[1,2] <- active_set_b[1,2] + 0.001}
+     
+ 
+     
+     #### BUILD CLASSIFIER 
+     # SVM
+     if(length(unique(active_set_b$status_group)) == 1){
+       predictions[j,b] <- active_set_b$status_group[1]  
+     }else{
+       model_svm_b <- svm(status_group ~ ., data = active_set_b, kernel="radial", cost = 10)
+       predictions[j, b] <- ifelse(predict(object = model_svm_b, newdata = subset(test_13_small[j,], select = -c(test_y))) == "functional", "functional", "requires attention")
+     }
+   }
+   print(b)
+ } 
+ 
+ temp <- predictions[,1:72]
+####### vote and predict
+ voting <- function(x){
+   sum(x == "functional")
+ }
+ 
+ preds_assc <- ifelse(apply(temp, 1, voting) >= 36, "functional", "requires attention")
+ confusionMatrix(preds_assc, test_13_small$test_y)
+```
+
+
+
+
+## Discussion  
+$\quad$ Notice that the Kappa statistic of 0.3624 is higher than that of SVM and random forest. Thus, by fitting an SVM classifier to $B = 201$ weighted bootstrap samples of (only) size $q = 100$ and letting each classifier vote to make a final prediction for each test case, we are able to outperform both SVM and random forst which were both optimally tuned. Particularly interesting is that the ASSC-SVM outperformed the optimally tuned SVM which implies that ASSC does alter the decision boundary based on the predicting set [@rick].
 
 
 ## Future Work  
@@ -1079,25 +1253,6 @@ $x_{13}$ = waterpoint\_type  \newline
 
 
 
-```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 7}
-library(ggplot2)
-ggplot() + ggtitle("Table ?", subtitle = "Compare Models                                           ") + theme_minimal()
-```
-\begin{center}
-\footnotesize
-\begin{tabular}{l l c c c c}
-    & & \multicolumn{2}{ c }{Actual} & \multicolumn{2}{c}{10-Fold CV} \\ \cline{3-6}
-    & Model & Accuracy & Kappa & CV-Accuracy & CV-Kappa \\ \hline
-    \multirow{ 2}{*}{Logistic Regression}& 13 predictors & `r round(cm_logistic_regression_13$overall[1],4)` & `r round(cm_logistic_regression_13$overall[2],4)` & `r round(model_logistic_regression_13_CV$results[2],4)` & `r round(model_logistic_regression_13_CV$results[3],4)` \\ 
-    & 15 predictors & `r round(cm_logistic_regression_15$overall[1],4)` & `r round(cm_logistic_regression_15$overall[2],4)` & `r round(model_logistic_regression_15_CV$results[2],4)` & `r round(model_logistic_regression_15_CV$results[3],4)` \\ \hline
-    \multirow{ 2}{*}{SVM}& 13 predictors & 2 & 2 & 0.8192 & 0.5785 \\ 
-    & 15 predictors & 2 & 2 & 0.8192 & 0.5909 \\ \hline
-    \multirow{ 2}{*}{Random Forest}& 13 predictors & 2 & 2 & 3 & 3 \\ 
-    & 15 predictors & 2 & 2 & 3 & 3 \\ \hline
-    \multirow{ 2}{*}{ASSC-SVM}& 13 predictors & 2 & 2 & - & - \\ 
-    & 15 predictors & 2 & 2 & - & - \\ \hline
-\end{tabular}
-\end{center}
 
-\vspace{2cm}
+
 
