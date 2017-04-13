@@ -450,6 +450,7 @@ ggplot() + ggtitle("Table 3", subtitle = "Final Set of Predictor Variables      
 ## Analysis
 Four prediction methods are detailed in the following portion of the paper. Each model was built on the "cornered" training data set excluding the `population` and `construction_year` variables (13 predictors) and again with the variables included (15 predictors). 
 
+\vspace{5mm}
 
 ### Logistic Regression
 $\quad$ Logistic regression has a long history in the field of statistics and is one of the most widely used source of classifiers [@james_witten_hastie_tibshirani]. In general, it is a method of estimating conditional probabilities as a function of explanatory variables and regression coefficients, and is often used to classify binary response data which is how we will apply it here. Two logistic regression models were fit to the training data using the `glm` function in `R`. For logistic regression, categorical variables (stored as `factors` in `R`) are expanded into binary indicator variables. The full equations for the 13 predictor, and 15 predictor models can both be found in the appendix.   
@@ -598,7 +599,7 @@ cm_svm_15 <- confusionMatrix(predict(svm_15, newdata = test_15), test_y)
 
 
 ```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 7}
-ggplot() + ggtitle("Table 6", subtitle = "Confusion Matrix and Statistics for Classifaction by Support Vector Machine (SVM) with 13 Predictor Variables                                           ") + theme_minimal()
+ggplot() + ggtitle("Table 6", subtitle = "Confusion Matrix and Statistics for Classification by Support Vector Machine (SVM) with 13 Predictor Variables                                           ") + theme_minimal()
 ```
 \begin{center}
 \footnotesize
@@ -621,7 +622,7 @@ ggplot() + ggtitle("Table 6", subtitle = "Confusion Matrix and Statistics for Cl
 
 
 ```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 7}
-ggplot() + ggtitle("Table 7", subtitle = "Confusion Matrix and Statistics for Classifaction by Support Vector Machine (SVM) with 15 Predictor Variables                                          ") + theme_minimal()
+ggplot() + ggtitle("Table 7", subtitle = "Confusion Matrix and Statistics for Classification by Support Vector Machine (SVM) with 15 Predictor Variables                                          ") + theme_minimal()
 ```
 \begin{center}
 \footnotesize
@@ -713,11 +714,10 @@ confusionMatrix(preds_forest_15, test_y)
 stats_rf_13_3 <- rfCV(train_13, 3) # ac = 0.6682, k = 0.3413
 stats_rf_15_4 <- rfCV(train_15, 4) # Kappa: 0.355 , Accuracy :0.678
 ```
-\vspace{1cm} 
 
 
 ```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 7}
-ggplot() + ggtitle("Table 8", subtitle = "Confusion Matrix and Statistics for Classifaction by Random Forest 13 Predictor Variables                                           ") + theme_minimal()
+ggplot() + ggtitle("Table 8", subtitle = "Confusion Matrix and Statistics for Classification by Random Forest 13 Predictor Variables                                           ") + theme_minimal()
 ```
 \begin{center}
 \footnotesize
@@ -741,7 +741,7 @@ ggplot() + ggtitle("Table 8", subtitle = "Confusion Matrix and Statistics for Cl
 
 
 ```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 7}
-ggplot() + ggtitle("Table 9", subtitle = "Confusion Matrix and Statistics for Classifaction by Random Forest 15 Predictor Variables                                           ") + theme_minimal()
+ggplot() + ggtitle("Table 9", subtitle = "Confusion Matrix and Statistics for Classification by Random Forest 15 Predictor Variables                                           ") + theme_minimal()
 ```
 \begin{center}
 \footnotesize
@@ -771,32 +771,41 @@ $\quad$ \textbf{A}ctive \textbf{S}et \textbf{S}election \textbf{C}lassification 
 
 $\quad$ First, lay the notational groundwork used in Algorithm 4.2.2 of Zhou (2014). Consider the training set $\mathcal{T}$ with $n = 2886$ (labeled) observations $\{(Y_i, \mathbf{X}_i) \}_{i = 1}^n$ where $Y_i$ are the corresponding class labels and $\mathbf{X}_i$ are $p$-dimensional feature vectors. Recall that for the well data we consider both the cases of $p=13$ and $p=15$ (training data excluding and including `population` and `construction_year` variables respectively). Also consider the testing (or predicting) set $\mathcal{P}$ with $m$ (unlabeled) observations $\{\mathbf{U}_j \}_{j = 1}^m$ which are $p$-dimensional feature vectors to be classified. The algorithm is extremely computationally expensive, so for demonstrative purposes I will simply consider a random subset of size $m = 300$ from $\mathcal{T}$ to evaluate both .  
 
+\pagebreak  
+
 
 Step 1.   
 
 
 
-> Compute an __association matrix__ $W_{m \times n} := [w_{ji}]_{j=1;i=1}^{m,n}$ that for $X_i=(X_{i1}, \hdots, X_{ip})'\in \mathcal{T}$ and  $U_j=(U_{j1}, \hdots, U_{jp})'\in \mathcal{P}$, 
-
+> Compute an __association matrix__ $W_{m \times n} := [w_{ji}]_{j=1;i=1}^{m,n}$ that for $X_i=(X_{i1}, \hdots, X_{ip})'\in \mathcal{T}$ and  $U_j=(U_{j1}, \hdots, U_{jp})'\in \mathcal{P}$,
 $$  
 w_{ji}=\mbox{exp}\left \{ - \ddfrac{\sum_{k=1}^{p}d_k^2(U_{jk}, X_{ik})}{\lambda}   \right \},
-$$
+$$    
+
+
  
  
  
-> where $\lambda$ can be thought of as a tuning parameter, and $d_k(u,x)$ denotes a distance (or dissimilarity) function of $u$ and $x$ on the $k^{th}$ coordinate of the feature vector. For standardized numeric features use Euclidean distance $$d_k(u,x) = \sqrt{(u_{jk} - x_{ik})^2}.$$ 
+> where $\lambda$ can be thought of as a tuning parameter, and $d_k(u,x)$ denotes a distance (or dissimilarity) function of $u$ and $x$ on the $k^{th}$ coordinate of the feature vector.  
+
+> For the $k_n$ standardized numeric features use Euclidean distance $$d_k(u,x) = \sqrt{(u_{jk} - x_{ik})^2}.$$ 
    
-> For all other categorical features use the following weighted degree-of-difference measure to assess dissimilarity for these features [@hastie_tibshirani_friedman]
+> For the remaining $k_c$ other categorical features use the following weighted degree-of-difference measure to assess dissimilarity for these features [@hastie_tibshirani_friedman]
 \[ d_k(u,x) = \tau \mbox{ I}[u_{jk} \ne x_{ik}] = \tau \left\{
 \begin{array}{ll}
       1 & u_{jk} \ne x_{ik} \\
       0 & u_{jk} = x_{ik} \\
 \end{array} 
-\right., \]
-where $\tau$ is the weight we will give to a pair of dissimilar categorical features at every coordinate of a categorical variables $k$.
-Thus, we compute each $[w_{ji}]_{j=1;i=1}^{m,n}$ as  
+\right., \]     
+
+
+> where $\tau$ is the weight given to a pair of dissimilar categorical features at every coordinate of a categorical variables $k$.  
+
+
+> Let $k_n$ be the number of numeric features and $k_c$ be the number of categorical features in the data set. Then, we compute each $[w_{ji}]_{j=1;i=1}^{m,n}$ as   
 $$  
-w_{ji}=\mbox{exp}\left \{ - \ddfrac{\sum_{k=1}^{2}(u_{jk} - x_{ik})^2 + \tau^2\sum_{k=3}^{13}\mbox{ I}[u_{jk} \ne x_{ik}]}{\lambda}   \right \}.
+w_{ji}=\mbox{exp}\left \{ - \ddfrac{\sum_{k=1}^{k_n}(u_{jk} - x_{ik})^2 + \tau^2\sum_{k=k_n+1}^{k_c}\mbox{ I}[u_{jk} \ne x_{ik}]}{\lambda}   \right \}.
 $$
 
    
@@ -830,29 +839,34 @@ $\,$ (a.)
 $\,$ (b.)   
 
 \vspace{-10.8mm}  
->  Train an SVM classifier with parameter cost $= 10$ on the selected active set $\mathcal{S}_b^q$ by which we make predictions $\hat{V}_{j,b}$ for observations in $\mathcal{P}$.
+>  Train an SVM classifier with parameter cost $= 10$ on the selected active set $\mathcal{S}_b^q$ by which we make predictions $\hat{V}_{j,b}$ for observations in $\mathcal{P}$.    
 
-\vspace{5mm}
+
+\vspace{5mm}    
+
+
 
 Step 4.
 
-> Obtain the predictions for observations in $\mathcal{P}$ by the majority voting that   
+> Obtain the predictions for observations in $\mathcal{P}$ by the majority voting that    
 \[  
 \hat{V}_j^{ASSC} = \mbox{arg max}\sum_{b=1}^{B} I\left[\hat{V}_{j,b} = c \right]
-\]
+\]  
 
 > for $j = 1, \hdots, m$. The collection $\mathcal{S}_B(m,n,q) = \cup_{b=1}^{B}\mathcal{S}_b^q$ is called the __active set__ for $\mathcal{T}$ with respect to $\mathcal{P}$.
 
+\vspace{10mm}
 
 
 $\quad$ First, we implement this algorithm using a random sample of size $m = 300$ from $\mathcal{P}$ with 13 predictor variables using parameters $B = 201$, $q = 150$, $\tau = 1.8$, $\lambda = 4$. This process is repeated three times and the averaged Accuracy and Kappa statistics can be found near the bottom of Table 10. Then, we implement this algorithm using a random sample of size $m = 300$ from $\mathcal{P}$ with 15 predictor variables using parameters $B = 201$, $q = 150$, $\tau = 1.5$, $\lambda = 3$. This process is also repeated three times and the averaged Accuracy and Kappa statistics are summarized in the last row of Table 10. Cross validation was not performed on ASSC-SVM models.
 
-$\quad$ Because a subset of the testing cases were used in runs of this algorithm, the reference distribution of `functional` and `requires attention` wells will likely differ from the overall distribution for the entire set $\mathcal{P}$ (i.e. the no information rates will differ for subsets of $\mathcal{P}$). , While the Accuracy values are certainly informative, they may be a bit misleading. Because the Kappa statistic takes into account the accuracy that would be generated simply by chance [@kuhn_johnson] it can be used to compare ASSC-SVM models to eachother as well as to all other models presented here.
+$\quad$ Because subsets of the testing cases were used in runs of this algorithm, the reference distribution of `functional` and `requires attention` wells will likely differ from the overall distribution for the entire set $\mathcal{P}$ (i.e. the no information rates will differ for different subsets of $\mathcal{P}$). While the Accuracy values are certainly informative, they are not as reliable as Kappa statistics to compare ASSC-SVM to other classification methods. Because the Kappa statistic takes into account the accuracy that would be generated simply by chance [@kuhn_johnson] it will be best served to compare ASSC-SVM models to each other as well as to all other models presented here.   
 
-\vspace{10mm}
+
+
 ```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 7}
 library(ggplot2)
-ggplot() + ggtitle("Table 10", subtitle = "Actual and 10-fold Cross Validation Accuracies and Kappa Statistics for Comparison of All Models Presented               ") + theme_minimal()
+ggplot() + ggtitle("Table 10", subtitle = "Actual and 10-Fold Cross Validation Accuracies and Kappa Statistics for Comparison of All Models Presented               ") + theme_minimal()
 ```
 \begin{center}
 \footnotesize
@@ -861,12 +875,12 @@ ggplot() + ggtitle("Table 10", subtitle = "Actual and 10-fold Cross Validation A
     & Model & Accuracy & Kappa & CV-Accuracy & CV-Kappa \\ \hline
     \multirow{ 2}{*}{Logistic Regression}& 13 Predictors & 0.6855 & 0.3703 & 0.7861 & 0.5148 \\ 
     & 15 Predictors & 0.6883 & 0.3748 & 0.7911 & 0.5251 \\ \hline
-    \multirow{ 2}{*}{SVM}& 13 Predictors & 0.6754 & 0.3533 & 0.8192 & 0.5785 \\ 
+    \multirow{ 2}{*}{SVM}& 13 Predictors & 0.6754 & 0.3533 & 0.8147 & 0.5785 \\ 
     & 15 Predictors & 0.6759 & 0.3535 & 0.8192 & 0.5909 \\ \hline
-    \multirow{ 2}{*}{Random Forest}& 13 Predictors & 0.6711 & 0.3455 & 0.8432 & 0.6414 \\ 
-    & 15 Predictors & 0.6790 & 0.3568 & 0.8433 & 0.6384 \\ \hline
-    \multirow{ 2}{*}{ASSC-SVM}& 13 Predictors & ?0.7(1.5more) & ?0.4(1.5more) & - & - \\ 
-    & 15 Predictors & 0.7233(1more) & 0.4424(1more) & - & - \\ \hline
+    \multirow{ 2}{*}{Random Forest}& 13 Predictors & 0.6711 & 0.3455 & 0.8413 & 0.6352 \\ 
+    & 15 Predictors & 0.6790 & 0.3568 & 0.8450 & 0.6464 \\ \hline
+    \multirow{ 2}{*}{ASSC-SVM}& 13 Predictors & ?0.70(1.5more) & ?0.40(1.5more) & - & - \\ 
+    & 15 Predictors & 0.7255 & 0.4486 & - & - \\ \hline
 \end{tabular}
 \end{center}
 
@@ -977,7 +991,6 @@ beep(2)
  confusionMatrix(preds_assc, test_13_small$test_y)
 ```
 
-\vspace{1cm} 
 
 
 
@@ -1092,8 +1105,8 @@ beep(2)
 ```
 
 
-## ASSC-SVM run Apr 12 night
 ```{r, echo = FALSE, eval = F}
+###################### RUN THIS CODE TONIGHT APRIL 13################
 ## STEP 0
  # create small workable data sets
  test_13_target <- cbind(test_13, test_y)
@@ -1195,23 +1208,30 @@ beep(2)
 
 
 ## Discussion  
-$\quad$ Notice that the Kappa statistic of 0.3624 is higher than that of SVM and random forest. Thus, by fitting an SVM classifier to $B = 201$ weighted bootstrap samples of (only) size $q = 100$ and letting each classifier vote to make a final prediction for each test case, we are able to outperform both SVM and random forst which were both optimally tuned. Particularly interesting is that the ASSC-SVM outperformed the optimally tuned SVM which implies that ASSC does alter the decision boundary based on the predicting set [@rick].
+$\quad$ It is quite interesting to note that of the fundamental classifiers in Table 10 (all but ASSC-SVM), the logistic regression models produce the lowest cross validation Accuracy and Kappa statistics but the highest actual Accuracy and Kappa statistics. This method of classifying wells in the training set is the least flexible of the three methods considered here, but that seems to serve it well. The more flexible classification methods of random forest and SVM certainly have higher cross validation Kappa statistics, but fall short when they are used to predict on testing cases outside of the corner. The random forest model that includes `population` and `construction_year` (15 predictor variables) outperforms the random forest model that excludes those variables, but only by a relatively small amount. For the SVM models though, it is not clear that including the `population` and `construction_year` variables improves the model at all.  
+
+$\quad$ The ASSC-SVM classifiers clearly outperform all of the fundamental models considered here. By fitting SVM classifiers to $B = 201$ weighted bootstrap samples of (only) size $q = 150$ and letting each classifier vote to make a final prediction for each test case, we are able to outperform logistic regression, as well as SVM and random forest which were both optimally tuned. Particularly interesting is that the ASSC-SVM outperformed the optimally tuned SVM which implies that ASSC does alter the decision boundary based on the predicting (testing) set [@rick].  
+
+$\quad$ The ASSC-SVM model with 15 predictor variables has a much larger (average) Kappa statistic than ACCS-SVM with 13 predictor variables. This makes sense because we take weighted bootstrap samples of training cases based on which training cases are "most near" the test case we consider. Using the `population` and `construction_year` variables in the dissimilarity function in Step 1 of the algorithm outlined by Zhou (2014) will give much better selection probabilities in Step 3. Using information about how far the test cases are with regard to the variables that specified the split for the corner will be very informative of which training cases in the corner are nearest the test case.
+
+$\quad$ When it comes to choosing a single classifier to implement in a business application, such as the motivating problem from Company X, the results from ASSC algorithm are very attractive. It has many benefits and can be used in combination with simple fundamental methods. Unfortunately, since this algorithm is so computationally expensive it would not serve a company that needs to classify hundreds of thousands of transactions in a single month very well. If time and resources aren't an issue ASSC or something similar seems to be the best course of action. Otherwise logistic regression does an okay job as far as extrapolating with parametric methods goes.
 
 
 ## Future Work  
-$\quad$   
+$\quad$ Optimizing the ASSC algorithm so that larger subsets of the testing set $\mathcal{P}$ (or the entire set) can be classified in a reasonable amount of time would be quite useful and yield more precise results. This may require using a lower level programming language or parallel computing in `R`. Then, using the ASSC algorithm with other simple funcdamental classifiers would be a great next step. It would also be quite interesting to implement different dissimilarity functions in Step 1 of the ASSC algorithm. 
 
+$\quad$ Additionally, I would like to explore the idea of cross validation within ASSC. First, the ability to tune parameters of the fundamental classifier used within the algorithm might significantly improve results. Next, finding some way to "tune" the dissimilarity function might prove quite useful. It would allow us to get a better grip on which training cases are most like the testing case at hand, then assign those training cases higher probabilities of being chosen during bootstrap sampling by way of a dissimilarity (similarity) index. This would allow a model to be built on a set of training cases that are very similar to the testing case. This idea is at the heart of the ASSC algorithm and is extrememly valuable, so setting a reasonable dissimilarity function is very important.
 
   
 \pagebreak  
 
 
 ## Appendix  
-  
-  
-#### Logistic Regression Equation    
+__Logistic Regression Equations__  
+__13 Predictor Variables__
 \begin{singlespace}
 \small
+\vspace{-5mm}
 $$
 \begin{aligned}
 logit(&status\_group) =  \beta_0 + \beta_{1,1}x_1 + \beta_{2,1}x_2 \\ 
@@ -1225,7 +1245,7 @@ logit(&status\_group) =  \beta_0 + \beta_{1,1}x_1 + \beta_{2,1}x_2 \\
 & + \beta_{10,1}I_{\{x_{10} = flouride\}} + \beta_{10,2}I_{\{x_{10} = good\}} + \beta_{10,3}I_{\{x_{10} = milky\}}+ \beta_{10,4}I_{\{x_{10} = salty\}} + \beta_{10,5}I_{\{x_{10} = unkown\}} \\
 & + \beta_{11,1}I_{\{x_{11} = enough\}}+ \beta_{11,2}I_{\{x_{11} = insufficient\}}+ \beta_{11,3}I_{\{x_{11} = seasonal\}} + \beta_{11,4}I_{\{x_{11} = unkown\}} \\ 
 &  + \beta{12,1}I_{\{x_{12} = surface\}}  + \beta{12,1}I_{\{x_{12} = unknown\}} \\
-& + \beta_{13,1}I_{\{x_{13} = communal standpipe\}}+ \beta_{13,2}I_{\{x_{13} = communal standpipe multiple\}} + \beta_{13,3}I_{\{x_{13} = hand pipe\}} \\ &+ \beta_{13,4}I_{\{x_{13} = hand pipe\}} + + \beta_{13,5}I_{\{x_{13} = improved spring\}} + \beta_{13,1}I_{\{x_{13} = other\}}
+& + \beta_{13,1}I_{\{x_{13} = communal standpipe\}}+ \beta_{13,2}I_{\{x_{13} = communal standpipe multiple\}} + \beta_{13,3}I_{\{x_{13} = hand pipe\}} \\ &+ \beta_{13,4}I_{\{x_{13} = hand pipe\}} +  \beta_{13,5}I_{\{x_{13} = improved spring\}} + \beta_{13,1}I_{\{x_{13} = other\}}
 \end{aligned}
 $$
 
@@ -1243,10 +1263,47 @@ $x_{10}$ = quality\_group  \newline
 $x_{11}$ = quantity  \newline
 $x_{12}$ = source\_class  \newline
 $x_{13}$ = waterpoint\_type  \newline
-
 \end{singlespace}
 
-\pagebreak  
+__15 Predictor Variables__
+\begin{singlespace}
+\small
+\vspace{-5mm}
+$$
+\begin{aligned}
+logit(&status\_group) =  \beta_0 + \beta_{1,1}x_1 + \beta_{2,1}x_2\\ 
+& + \beta_{3,1}I_{\{x_3 = Lake Nyasa\}} + \beta_{3,2}I_{\{x_3 = Lake Rukwa\}} \\ &  + \beta_{3,3}I_{\{x_3 = Lake Tanganyika\}} + \beta_{3,4}I_{\{x_3 = Lake Victoria\}} + \beta_{3,5}I_{\{x_3 = Pangani\}} \\ &+ \beta_{3,6}I_{\{x_3 = Rufiji\}} + \beta_{3,7}I_{\{x_3 = Ruvuma / S. Coast\}}+ \beta_{3,8}I_{\{x_3 = Wami / Ruvu\}} \\ 
+& + \beta_{4,1}I_{\{x_4 = True\}} + \beta_{4,2}I_{\{x_4 = Unknown\}} \\ 
+&+ \beta_{5,1}I_{\{x_5 = Other\}} + \beta_{5,2}I_{\{x_5 = Parastatal\}} + \beta_{5,3}I_{\{x_5 = Private Op.\}} + \beta_{5,4}I_{\{x_5 = SWC\}} \\ &+ \beta_{5,5}I_{\{x_5 = Trust\}} + \beta_{5,6}I_{\{x_5 = VWC\}} + \beta_{5,7}I_{\{x_5 = Water Auth.\}} \\ &+ \beta_{5,8}I_{\{x_5 = Water Board\}}+ \beta_{5,9}I_{\{x_5 = WUA\}}+ \beta_{5,10}I_{\{x_5 = WUG\}} \\
+& + \beta_{6,1}I_{\{x_6 = True\}} + \beta_{6,2}I_{\{x_6 = Unknown\}} \\ 
+& + \beta_{7,1}I_{\{x_7 = handpump\}} + \beta_{7,2}I_{\{x_7 = motorpump\}} +\beta_{7,3}I_{\{x_7 = other\}} \\& + \beta_{7,4}I_{\{x_7 = submersible\}}+ \beta_{7,5}I_{\{x_7 = wind-powered\}} \\
+& + \beta_{8,1}I_{\{x_8 = other\}} + \beta_{8,2}I_{\{x_8 = parastatal\}} + \beta_{8,3}I_{\{x_8 = unkown\}} + \beta_{8,4}I_{\{x_8 = user-group\}} \\ 
+& + \beta_{9,1}I_{\{x_9 = other\}} + \beta_{9,2}I_{\{x_9 = pay annually\}}+ \beta_{9,3}I_{\{x_9 = pay monthly\}} \\& + \beta_{9,4}I_{\{x_9 = pay per bucket\}} + \beta_{9,5}I_{\{x_9 = pay when scheme fails\}} + \beta_{9,6}I_{\{x_9 = unknown\}} \\
+& + \beta_{10,1}I_{\{x_{10} = flouride\}} + \beta_{10,2}I_{\{x_{10} = good\}} + \beta_{10,3}I_{\{x_{10} = milky\}}+ \beta_{10,4}I_{\{x_{10} = salty\}} + \beta_{10,5}I_{\{x_{10} = unkown\}} \\
+& + \beta_{11,1}I_{\{x_{11} = enough\}}+ \beta_{11,2}I_{\{x_{11} = insufficient\}}+ \beta_{11,3}I_{\{x_{11} = seasonal\}} + \beta_{11,4}I_{\{x_{11} = unkown\}} \\ 
+&  + \beta{12,1}I_{\{x_{12} = surface\}}  + \beta{12,1}I_{\{x_{12} = unknown\}} \\
+& + \beta_{13,1}I_{\{x_{13} = communal standpipe\}}+ \beta_{13,2}I_{\{x_{13} = communal standpipe multiple\}} + \beta_{13,3}I_{\{x_{13} = hand pipe\}} \\ &+ \beta_{13,4}I_{\{x_{13} = hand pipe\}} +  \beta_{13,5}I_{\{x_{13} = improved spring\}} + \beta_{13,1}I_{\{x_{13} = other\}} + \beta_{14,1}x_{14} + \beta_{15,1}x_{15}
+\end{aligned}
+$$
+
+where,  \newline
+$x_1$ = amount\_tsh  \newline
+$x_2$ = gps\_height  \newline
+$x_3$ = basin  \newline
+$x_4$ = public\_meeting  \newline
+$x_5$ = scheme\_management  \newline
+$x_6$ = permit  \newline
+$x_7$ = extraction\_type\_class  \newline
+$x_8$ = management\_group  \newline
+$x_9$ = payment  \newline
+$x_{10}$ = quality\_group  \newline
+$x_{11}$ = quantity  \newline
+$x_{12}$ = source\_class  \newline
+$x_{13}$ = waterpoint\_type  \newline
+$x_{14}$ = population  \newline
+$x_{15}$ = construction\_year  \newline
+
+\end{singlespace}
 
 
 ## References  
