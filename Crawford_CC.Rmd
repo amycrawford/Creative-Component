@@ -65,7 +65,7 @@ data$gps_height[data$gps_height == 0] <- median(data$gps_height[data$gps_height>
 \vspace{1cm}
 
 ## Abstract  
-When companies implement algorithms to expedite existing job functions it often leaves them with newly available employees, time, and money to investigate other unexplored parts of their market. To be as efficient as possible in an expansion such as this, the company can again turn to some machine learning algorithm to point to where the newly available resources should be focused in the market. Unfortunately, the only available data to train an algorithm on would then be data from the portion of the market that has already been explored by the company. In other words, whether a case in the data set would have a label or not is due to a specific non-random mechanism. I evaluate the performance of logistic regression, \textbf{s}upport \textbf{v}ector \textbf{m}achine (SVM), and random forest models under this framework. Additionally, I implement one classification method called \textbf{a}ctive \textbf{s}et \textbf{s}election \textbf{c}lassification (ASSC) that involves weighted bootstrap and emsemble learning.
+When companies implement algorithms to expedite existing job functions it often leaves them with newly available employees, time, and money to investigate other unexplored parts of their market. To be as efficient as possible in an expansion such as this, the company can again turn to some machine learning algorithm to point to where the newly available resources should be focused in the market. Unfortunately, the only available data to train an algorithm on would then be data from the portion of the market that has already been explored by the company. This leads to many scenarios in which a case in the data set will either have a label or not have one due to a specific non-random mechanism. In this paper, I evaluate the performance of traditional methods of classification such as logistic regression, support vector machine (SVM), and random forest models under this framework. Additionally, I implement one classification method called active set selection classification (ASSC) that involves weighted bootstrap and emsemble learning.
 
 \pagebreak 
 
@@ -140,7 +140,7 @@ $\quad$ The water pump data can be configured to be analogous to the motivating 
 $\quad$ Hypothetically, consider that until very recently the organization responsible for monitoring the status of the water points and pumps had restricted resources of money, time, and employees and could only monitor old wells (built before 1985) that have a relatively large surrounding population (> 200 people). These water points are analogous to the "high risk" set of transactions from Company X. So, the organization has data on features of all pumps, but only pumps on these currently monitored water points are labeled as `functional`, `functional needs repair`, or `non functional`.  
   
   
-$\quad$ Now, suppose the organization has acquired resources to hire a few new employees who will devote their time to monitoring and managing water points with less densely populated surrounding areas. The organization needs to use these few employees in a very strategic way. There are many, many wells that will fall under this group's jurisdiction and they need to target pumps that are likely broken, or need repairs. The organization doesn't want to waste time sending these employees all over the country to check on pumps that are functional. Using what we know about the status of the pumps that have been monitored (the "high risk" pumps), we need to predict which of the relatively new pumps that are located in less densely populated areas will require the attention of the new employees (i.e. the pumps that need repairs, or are broken).
+$\quad$ Now, suppose the organization has acquired resources to hire a few new employees who will devote their time to monitoring and managing water points with less densely populated surrounding areas. The organization needs to use these few employees in a very strategic way. There are many, many wells that will fall under this group's jurisdiction and they need to target pumps that are likely broken, or need repairs. The organization doesn't want to waste time sending these employees all over the country to check on pumps that are functional. Using what we know about the status of the pumps that have been monitored (the "high risk" pumps), we need to predict which of the relatively new pumps that are located in less densely populated areas will require the attention of the new employees (i.e. the pumps that need repairs or are broken).
 
 \pagebreak
 
@@ -149,14 +149,14 @@ $\quad$ Now, suppose the organization has acquired resources to hire a few new e
 
 $\quad$ The water pump data has 59,400 rows and 41 columns and contains information on various features of the pumps as well as the water points where they reside. Water pumps were originally labeled as `functional`, `functional needs repair`, and `non functional`. First, to parallel the motivating problem from Company X, we will turn this 3-class classification problem into a 2-class classification problem. To do this, consider the pumps labeled as `functional needs repair` and `non functional` together in one group labeled `requires attention`.
 
-$\quad$ There is a variable in the data set, `population`, that provides information about the size of the population surrounding the water point. Nearly 36\% of the values in this column are zero. It is clear that many of the zeros simply indicate a missing value, but we acknowledge the possibility that there truly are not any residents residing in the vacinity of a water point. If the latter is the case, we can eliminate the water point from the data set since we do not wish to expend effort classifying a water point that is abandoned. If the former is true, then the zero represents a missing value. After looking for patterns that might help us understand these many missing values, we find that the location of the water point seems relevant. 
+$\quad$ There is a variable in the data set, `population`, that provides information about the size of the population surrounding the water point. Nearly 36\% of the values in this column are zero. It is clear that many of the zeros simply indicate a missing value, but we acknowledge the possibility that there truly are not any residents residing in the vicinity of a water point. If the latter is the case, we can eliminate the water point from the data set since we do not wish to expend effort classifying a water point that is abandoned. If the former is true, then the zero represents a missing value. After looking for patterns that might help us understand these many missing values, we find that the location of the water point seems relevant. 
 
 $\quad$ Tanzania is divided into regions and most zero values of the `population` variable are for water points in six of these regions [@DrivenData]. Since the focus of this problem is not a spatial analysis and it would not be particularly helpful to classify abandoned water points, we can proceed only considering water points with non-zero values of the `population` variable. Similarly, we will elimate any wells that are missing information about construction year. This effectively reduces the number of rows from 59,400 to 37,344. The map in left panel of Figure 2 displays all 59,400 water points in the original data set. The map in the right panel of Figure 2 includes only the water points with valid `population` and `construction_year` data. Both maps are colored by the classification of the water pump status. Maps were generated using shape files from the GADM spatial database [@shapefile].
 
 
 \vspace{1.5cm}
 
-```{r, echo = F, message = F, warning = F, eval = F}
+```{r, echo = F, message = F, warning = F}
 library(maptools)
 library(gridExtra)
 library(gtable)
@@ -222,7 +222,7 @@ ggplot(data) + geom_bar(aes(construction_year, fill = status_group)) +
 data$corner <- ifelse(data$population > 200 & data$construction_year < 1985, 1, 0)
 ```
 
-\vspace{1cm}
+\vspace{1.5cm}
 
 $\quad$ Now, the data have been divided into the training and testing sets based on the thresholds for the `population` and `construction_year` variables prescribed above. 
 The training data has 2,886 rows and the testing data has 34,458 rows. The distribution of the target variable `status_group` in each of these data sets is summarized in Table 1. 
@@ -230,7 +230,7 @@ The training data has 2,886 rows and the testing data has 34,458 rows. The distr
 \vspace{1cm}
 
 ```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 9}
-ggplot() + ggtitle("Table 1", subtitle = "Distribution of the Status Group Variable in Training and Testing Data Sets                           ") + theme_minimal()
+ggplot() + ggtitle("Table 1", subtitle = "Distribution of the Status Group Variable in Training and Testing Data Sets                                                                             ") + theme_minimal()
 ```
 
 \begin{center}
@@ -243,9 +243,12 @@ ggplot() + ggtitle("Table 1", subtitle = "Distribution of the Status Group Varia
 \end{tabular}
 \end{center}
 
-\vspace{1cm}
+\vspace{1.5cm}
 
-$\quad$ Because broken pumps are not quite such a rare event as fraud on a revolving credit product, the Tanzania water pump data are not unbalanced like the data from Company X. We have, however, constructed a training set including only water points with `population` larger than 200 and `construction_year` before 1985 effectively forcing the training data into a "corner" of the feature space. The Company X data was believed to have a higher rate of fraud among the "cornered" training data cases than the testing data cases. Using the chosen thresholds to split the Tanzania water point data, we are able to mirror this phenomenon. Now, labels on the status of the water pumpts are removed from the testing dataset and we proceed to select features and model as if we never had them. They will be used only to evaluate model performance.
+$\quad$ Because broken pumps are not quite such a rare event as fraud on a revolving credit product, the Tanzania water pump data are not unbalanced like the data from Company X. We have, however, constructed a training set including only water points with `population` larger than 200 and `construction_year` before 1985 effectively forcing the training data into a "corner" of the feature space. The Company X data was believed to have a higher rate of fraud among the "cornered" training data cases than the testing data cases. Using the chosen thresholds to split the Tanzania water point data, we are able to mirror this phenomenon. Now, labels on the status of the water pumps are removed from the testing dataset and we proceed to select features and model as if we never had them. They will be used only to evaluate model performance.
+
+\pagebreak 
+
 
 ### Feature Selection
 
@@ -363,12 +366,12 @@ test_13$construction_year <- NULL
 test_13 <- droplevels(test_13)
 ```
 
-$\quad$ There are many groups of variables in the data that are meant to give the same information at different levels of detail. For example, the variables `source`, `source_type`, and `source_class` all provide information about the water source feeding the water point. These variables are all coded as factors. The `source_class` variable gives very general, high level information while `source_type` is a bit less general, giving a moderate amount of detail. The `source` variable is the most detailed of the three. Table 2 shows the unique values each of these variables can take. These variables are highly correlated and will clearly introduce multicollinearity during the modeling process. For variable groups like these, the one providing what we judge to be the most appropriate level of detail is chosen using visual comparison and numerical summaries. For the three variables discussed here, `source_type` was chosen as the most appropriate to inform the subsequent models about the water source feeding the water point. A bar plot of the `source_type` variable, colored by the target variable, `status_group`, in the training data can be found in Figure 5.
+$\quad$ There are many groups of variables in the data that are meant to give the same information at different levels of detail. For example, the variables `source`, `source_type`, and `source_class` all provide information about the water source feeding the water point. These variables are all coded as factors. The `source_class` variable gives very general, high level information while `source_type` is a bit more specific, giving a moderate amount of detail. The `source` variable is the most detailed of the three. Table 2 shows the unique values each of these variables can take. These variables are highly correlated and will clearly introduce multicollinearity during the modeling process. For variable groups like these, the one providing what we judge to be the most appropriate level of detail is chosen using visual comparison and numerical summaries. For the three variables discussed here, `source_type` was chosen as the most appropriate to inform the subsequent models about the water source feeding the water point. A bar plot of the `source_type` variable, colored by the target variable, `status_group`, in the training data can be found in Figure 5.
 
-\pagebreak
+\vspace{1cm}
 
 ```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 9}
-ggplot() + ggtitle("Table 2", subtitle = "Unique Values in each of the Variables that Provide Water Source Information                     ") + theme_minimal()
+ggplot() + ggtitle("Table 2", subtitle = "Unique Values in each of the Variables that Provide Water Source Information                                        ") + theme_minimal()
 ```
 \begin{singlespace}
 \begin{center}
@@ -400,7 +403,7 @@ ggplot(data = data) + geom_bar(aes(x = source_type, fill=status_group)) +
 
 \vspace{1cm}
 
-$\quad$ There are variables in the data set that appear to be manually maintained and have too many unique values to be managable. These variables were eliminated as well as any variables with only one unique value. All variables, except `basin`, providing information on the location of the water point were eliminated and few other variables were excluded for lack of predictive power. Basin was kept because it gives information on the geographic location of the water points with regard to the water basin they pull from. The data began with 40 feature columns (excluding the target variable, `status_group`). After feature selection, the resulting data set has 15 feature columns and the target variable. Since the `population` and `construction_year` variables were used to create the split between training and testing data sets it will be interesting to fit models with and without these variables to compare performance. Table 3 is a compilation of the final 15 features, their descriptions, and values that each can take.
+$\quad$ There are variables in the data set that appear to be manually maintained and have too many unique values to be managable. These variables were eliminated as well as any variables with only one unique value. All variables providing information on the location of the water point were eliminated with the exception of `basin`. A few other variables were excluded for lack of predictive power. The variable `basin` was kept because it gives information on the geographic location of the water points with regard to the water basin they pull from. The data began with 40 feature columns (excluding the target variable, `status_group`). After feature selection, the resulting data set has 15 feature columns and the target variable. Since the `population` and `construction_year` variables were used to create the split between training and testing data sets I will also fit models with and without these variables to compare performance. Table 3 is a compilation of the final 15 features, their descriptions, and values that each can take.
 
 
 
@@ -448,14 +451,14 @@ ggplot() + ggtitle("Table 3", subtitle = "Final Set of Predictor Variables      
 
 
 ## Analysis
-Four prediction methods are detailed in the following portion of the paper. Each model was built on the "cornered" training data set excluding the `population` and `construction_year` variables (13 predictors) and again with the variables included (15 predictors). 
+Four prediction methods are detailed in the following portion of the paper. Each model was built on the "cornered" training data set excluding the `population` and `construction_year` variables (13 predictors) and then again with those two variables included (15 predictors). 
 
 \vspace{5mm}
 
 ### Logistic Regression
-$\quad$ Logistic regression has a long history in the field of statistics and is one of the most widely used source of classifiers [@james_witten_hastie_tibshirani]. In general, it is a method of estimating conditional probabilities as a function of explanatory variables and regression coefficients, and is often used to classify binary response data which is how we will apply it here. Two logistic regression models were fit to the training data using the `glm` function in `R`. For logistic regression, categorical variables (stored as `factors` in `R`) are expanded into binary indicator variables. The full equations for the 13 predictor, and 15 predictor models can both be found in the appendix.   
+$\quad$ Logistic regression has a long history in the field of statistics and is one of the most widely used source of classifiers [@james_witten_hastie_tibshirani]. In general, it is a method of estimating conditional probabilities as a function of explanatory variables and regression coefficients, and is often used to classify binary response data which is how we will apply it here. Two logistic regression models were fit to the training data using the `glm` function in `R`. For logistic regression, categorical variables (stored as `factors` in `R`) are expanded into binary indicator variables. The full equations for the 13 predictor and 15 predictor models can both be found in the appendix.   
 
-$\quad$ Using the 13 predictor and 15 predictor models to classify water pumps in the testing set yields the confusion matrices and statistics in Tables 4 and 5 respectively. The largest advantages of implementing a logistic regression model are interpretability and computational convenience. Since we are extrapolating, the relatively low values of Accuracy, Sensitivity, and Specificity are not surprising. Kuhn and Johnson (2013) write that Kappa values within 0.30 to 0.50 indicate reasonable agreement, so although they are on the low end, we are not so dissatisfied with the Kappa statistics of 0.3703 and 0.3748. 10-Fold cross validation results are reported in Table 10.
+$\quad$ Using the 13-predictor and 15-predictor models to classify water pumps in the testing set yields the confusion matrices and statistics in Tables 4 and 5 respectively. Since we are extrapolating, the relatively low values of Accuracy, Sensitivity, and Specificity are not surprising. Kuhn and Johnson (2013) write that Kappa values within 0.30 to 0.50 indicate reasonable agreement, so although they are on the low end, we are not so dissatisfied with the Kappa statistics of 0.3703 and 0.3748. 10-Fold cross validation results are reported in Table 10.
 
 ```{r, echo = F, message = F, warning = F}
 # ## LOGISTIC REGRESSION
@@ -498,10 +501,7 @@ cm_logistic_regression_13 <- confusionMatrix(data=preds_logistic_regression_13, 
 #confusionMatrix(preds_logistic_regression_factor, test_y)
 ```
 
-
-
 \vspace{1cm}
-
 
 ```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 7}
 ggplot() + ggtitle("Table 4", subtitle = "Confusion Matrix and Statistics for Classification by Logistic Regression with 13 Predictor Variables                                          ") + theme_minimal()
@@ -553,7 +553,7 @@ ggplot() + ggtitle("Table 5", subtitle = "Confusion Matrix and Statistics for Cl
 ### Support Vector Machine (SVM)
 
 
-$\quad$ \textbf{S}upport \textbf{V}ector \textbf{M}achines (SVMs) are a more flexible procedure that enlarges the feature space using basis expansions. Linear classifiers generally achieve better training class separation in this enlarged space. These classifiers translate to nonlinear classification boundaries in the original space. The dimension of the enlarged feature space is allowed to get very large [@hastie_tibshirani_friedman]. 
+$\quad$ Support Vector Machines (SVMs) are a more flexible procedure that enlarges the feature space using basis expansions. Linear classifiers generally achieve better training class separation in this enlarged space. These classifiers translate to nonlinear classification boundaries in the original space. The dimension of the enlarged feature space is allowed to get very large [@hastie_tibshirani_friedman]. 
 
 $\quad$ Two SVM models were fit using the `svm` function with a radial kernal in the `e1071` package in `R`. Cost paramaters for each model were tuned using 10-fold cross validation. The model fit with 13 predictors was fit with a cost parameter of 40 and the model fit with 15 predictors with a cost parameter of 90. Confusion matrices and prediction statistics are included in Tables 6 and 7. We notice that classification using these SVM models yields slightly lower values of Accuracy and Kappa statistics, but the Kappa values both remain above 0.3. 10-Fold cross validation results are in Table 10.
 
@@ -617,9 +617,7 @@ ggplot() + ggtitle("Table 6", subtitle = "Confusion Matrix and Statistics for Cl
     &    &  Specificity :&0.7211\\
 \end{tabular}
 \end{center}
-\vspace{1cm}
-
-
+\vspace{5mm}
 
 ```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 7}
 ggplot() + ggtitle("Table 7", subtitle = "Confusion Matrix and Statistics for Classification by Support Vector Machine (SVM) with 15 Predictor Variables                                          ") + theme_minimal()
@@ -648,7 +646,7 @@ ggplot() + ggtitle("Table 7", subtitle = "Confusion Matrix and Statistics for Cl
 
 
 ### Random Forest
-$\quad$ Random forest is a tree-based method that can be used for classification. This algorithm builds a number of decision trees on bootstrapped training samples. During building, at each node (or split) of each tree, the algorithm radomly selects a subset of the input features and finds an optimal single split. For each tree, we repeat splitting in this fashion up to a fixed depth or until no single split improvement is possible without creating a split resulting in a small number of cases. Many trees are built in this fashion, then aggregated [@james_witten_hastie_tibshirani].
+$\quad$ Random forest is a tree-based method that can be used for classification. This algorithm builds a number of decision trees on bootstrapped training samples. During building, at each node (or split) of each tree, the algorithm radomly selects a subset of input features and finds an optimal single split. For each tree, we repeat splitting in this fashion up to a fixed depth or until no single split improvement is possible without creating a split resulting in a small number of cases. Many trees are built in this fashion then aggregated [@james_witten_hastie_tibshirani].
 
 $\quad$ Two random forest models were trained using the `randomForest` function from the `randomForest` package in `R`. The parameter `mtry` determines the number of features randomly sampled as candidates at each split. Again using 10-fold cross validation, the model fit with 13 predictor variables was optimized at an `mtry` value of 3 and the model fit with 15 predictor variables at 4. The resulting confusion matrices and statistics for these two models are in Tables 8 and 9. 10-Fold cross validation results are in Table 10.
 
@@ -737,7 +735,7 @@ ggplot() + ggtitle("Table 8", subtitle = "Confusion Matrix and Statistics for Cl
 \end{center}
 
 
-\vspace{1cm} 
+\vspace{5mm} 
 
 
 ```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 7}
@@ -766,12 +764,12 @@ ggplot() + ggtitle("Table 9", subtitle = "Confusion Matrix and Statistics for Cl
 
 $\quad$ Dataset shift is a common problem in predictive analytics that presents itself in many practical applications. This phenomenon occurs when the joint distribution of inputs and outputs differs between training and testing stages of predictive modeling. It may be present for a variety of reasons such as the inability to reproduce testing conditions during training, or because experimental design introduces bias. In the real world, it is often the case that the conditions under which we use the models that we develop will differ from the conditions in which the model was developed. Environments are generally nonstationary and while "textbook" predictive machine learning algorithms are powerful, they generally ignore these differences [@dataset_shift].   
 
-$\quad$ \textbf{A}ctive \textbf{S}et \textbf{S}election \textbf{C}lassification (ASSM) is the next classification method we will consider. ASSM is introduced by Wen Zhou in Chapter 4 of his doctoral dissertation [@rick]. The chapter discusses the covariate shift problem, which is a particular type of dataset shift where the distribution of feature vectors are possibly different between training and testing sets. By training existing classifiers using subsets of training data that are similar (in some sense) to the training cases, one is able to mitigate a large amount of the effect brought on by the covariate shift problem. ASSM is felixible and can be used with existing methods of classification. Zhou details the ASSM algorithm in Algorithm 4.2.2 of his paper. Here we implement ASSC with an SVM classifier (ASSM-SVM) in the same fashion, substituting our own functions and parameters in the algorithm as follows.  
+$\quad$ Active Set Selection Classification (ASSC) is the next classification method we will consider. ASSM is introduced by Wen Zhou in Chapter 4 of his doctoral dissertation [@rick]. The chapter discusses the covariate shift problem, which is a particular type of dataset shift where the distribution of feature vectors are possibly different between training and testing sets. By training existing classifiers using subsets of training data that are similar (in some sense) to the training cases, one is able to mitigate a large amount of the effect brought on by the covariate shift problem. ASSM is felixible and can be used with existing methods of classification. Zhou details the ASSM algorithm in Algorithm 4.2.2 of his paper. Here we implement ASSC with an SVM classifier (ASSM-SVM) in the same fashion, substituting our own functions and parameters in the algorithm as follows.  
  
 
 $\quad$ First, lay the notational groundwork used in Algorithm 4.2.2 of Zhou (2014). Consider the training set $\mathcal{T}$ with $n = 2886$ (labeled) observations $\{(Y_i, \mathbf{X}_i) \}_{i = 1}^n$ where $Y_i$ are the corresponding class labels and $\mathbf{X}_i$ are $p$-dimensional feature vectors. Recall that for the well data we consider both the cases of $p=13$ and $p=15$ (training data excluding and including `population` and `construction_year` variables respectively). Also consider the testing (or predicting) set $\mathcal{P}$ with $m$ (unlabeled) observations $\{\mathbf{U}_j \}_{j = 1}^m$ which are $p$-dimensional feature vectors to be classified. The algorithm is extremely computationally expensive, so for demonstrative purposes I will simply consider a random subset of size $m = 300$ from $\mathcal{T}$ to evaluate both .  
 
-\pagebreak  
+\vspace{1cm}
 
 
 Step 1.   
@@ -808,7 +806,7 @@ $$
 w_{ji}=\mbox{exp}\left \{ - \ddfrac{\sum_{k=1}^{k_n}(u_{jk} - x_{ik})^2 + \tau^2\sum_{k=k_n+1}^{k_c}\mbox{ I}[u_{jk} \ne x_{ik}]}{\lambda}   \right \}.
 $$
 
-   
+\vspace{5mm}
    
 Step 2.  
 
@@ -842,7 +840,7 @@ $\,$ (b.)
 >  Train an SVM classifier with parameter cost $= 10$ on the selected active set $\mathcal{S}_b^q$ by which we make predictions $\hat{V}_{j,b}$ for observations in $\mathcal{P}$.    
 
 
-\vspace{5mm}    
+\pagebreak   
 
 
 
@@ -858,10 +856,11 @@ Step 4.
 \vspace{10mm}
 
 
-$\quad$ First, we implement this algorithm using a random sample of size $m = 300$ from $\mathcal{P}$ with 13 predictor variables using parameters $B = 201$, $q = 150$, $\tau = 1.8$, $\lambda = 4$. This process is repeated three times and the averaged Accuracy and Kappa statistics can be found near the bottom of Table 10. Then, we implement this algorithm using a random sample of size $m = 300$ from $\mathcal{P}$ with 15 predictor variables using parameters $B = 201$, $q = 150$, $\tau = 1.5$, $\lambda = 3$. This process is also repeated three times and the averaged Accuracy and Kappa statistics are summarized in the last row of Table 10. Cross validation was not performed on ASSC-SVM models.
+$\quad$ For computational convenience we implement this algorithm using a random sample of size $m = 300$ from $\mathcal{P}$ with 13 predictor variables using parameters $B = 201$, $q = 150$, $\tau = 1.8$, $\lambda = 4$. This process is repeated three times and the averaged Accuracy and Kappa statistics can be found in Table 10. Then, we implement this algorithm using a random sample of size $m = 300$ from $\mathcal{P}$ with 15 predictor variables using parameters $B = 201$, $q = 150$, $\tau = 1.5$, $\lambda = 3$. This process is also repeated three times and the averaged Accuracy and Kappa statistics are summarized in the last row of Table 10. Cross validation was not performed on ASSC-SVM models.
 
 $\quad$ Because subsets of the testing cases were used in runs of this algorithm, the reference distribution of `functional` and `requires attention` wells will likely differ from the overall distribution for the entire set $\mathcal{P}$ (i.e. the no information rates will differ for different subsets of $\mathcal{P}$). While the Accuracy values are certainly informative, they are not as reliable as Kappa statistics to compare ASSC-SVM to other classification methods. Because the Kappa statistic takes into account the accuracy that would be generated simply by chance [@kuhn_johnson] it will be best served to compare ASSC-SVM models to each other as well as to all other models presented here.   
 
+\pagebreak
 
 
 ```{r, message=F, warning=F, fig.height=.5, echo = F, fig.align="center", fig.width = 7}
@@ -879,7 +878,7 @@ ggplot() + ggtitle("Table 10", subtitle = "Actual and 10-Fold Cross Validation A
     & 15 Predictors & 0.6759 & 0.3535 & 0.8192 & 0.5909 \\ \hline
     \multirow{ 2}{*}{Random Forest}& 13 Predictors & 0.6711 & 0.3455 & 0.8413 & 0.6352 \\ 
     & 15 Predictors & 0.6790 & 0.3568 & 0.8450 & 0.6464 \\ \hline
-    \multirow{ 2}{*}{ASSC-SVM}& 13 Predictors & ?0.70(1.5more) & ?0.40(1.5more) & - & - \\ 
+    \multirow{ 2}{*}{ASSC-SVM}& 13 Predictors & 0.6944 & 0.3904 & - & - \\ 
     & 15 Predictors & 0.7255 & 0.4486 & - & - \\ \hline
 \end{tabular}
 \end{center}
@@ -994,7 +993,7 @@ beep(2)
 
 
 
-\vspace{2cm}
+\vspace{1.5cm}
 
 
 
@@ -1194,27 +1193,30 @@ beep(2)
    print(b)
  } 
  
- temp <- predictions[,1:72]
+beep(8) 
+ 
 ####### vote and predict
  voting <- function(x){
    sum(x == "functional")
  }
  
- preds_assc <- ifelse(apply(temp, 1, voting) >= 36, "functional", "requires attention")
+ preds_assc <- ifelse(apply(predictions, 1, voting) >= (B+1)/2, "functional", "requires attention")
  confusionMatrix(preds_assc, test_13_small$test_y)
 ```
 
 
 
-
 ## Discussion  
-$\quad$ It is quite interesting to note that of the fundamental classifiers in Table 10 (all but ASSC-SVM), the logistic regression models produce the lowest cross validation Accuracy and Kappa statistics but the highest actual Accuracy and Kappa statistics. This method of classifying wells in the training set is the least flexible of the three methods considered here, but that seems to serve it well. The more flexible classification methods of random forest and SVM certainly have higher cross validation Kappa statistics, but fall short when they are used to predict on testing cases outside of the corner. The random forest model that includes `population` and `construction_year` (15 predictor variables) outperforms the random forest model that excludes those variables, but only by a relatively small amount. For the SVM models though, it is not clear that including the `population` and `construction_year` variables improves the model at all.  
+$\quad$ It is quite interesting to note that of the fundamental classifiers in Table 10 (all but ASSC-SVM), the logistic regression models produce the lowest cross validation Accuracy and Kappa statistics but the highest actual Accuracy and Kappa statistics. This method of classifying wells in the training set is the least flexible of the three methods considered here, but that seems to serve it well. 
 
-$\quad$ The ASSC-SVM classifiers clearly outperform all of the fundamental models considered here. By fitting SVM classifiers to $B = 201$ weighted bootstrap samples of (only) size $q = 150$ and letting each classifier vote to make a final prediction for each test case, we are able to outperform logistic regression, as well as SVM and random forest which were both optimally tuned. Particularly interesting is that the ASSC-SVM outperformed the optimally tuned SVM which implies that ASSC does alter the decision boundary based on the predicting (testing) set [@rick].  
+$\quad$ The more flexible classification methods of random forest and SVM certainly have higher cross validation Kappa statistics, but fall short when they are used to predict on testing cases outside of the corner. The random forest model that includes `population` and `construction_year` (15 predictor variables) outperforms the random forest model that excludes those variables, but only by a relatively small margin. For the SVM models though, it is not clear that including the `population` and `construction_year` variables improves the model at all.  
+
+$\quad$ The ASSC-SVM classifiers clearly outperform all of the fundamental models considered here. By fitting SVM classifiers to $B = 201$ weighted bootstrap samples of (only) size $q = 150$ and letting each classifier vote to make a final prediction for each test case, we are able to outperform logistic regression, as well as SVM and random forest which were both optimally tuned. Particularly interesting is that the ASSC-SVM outperformed the optimally tuned SVM which may suggest that ASSC alters the decision boundary based on the predicting (testing) set [@rick].  
 
 $\quad$ The ASSC-SVM model with 15 predictor variables has a much larger (average) Kappa statistic than ACCS-SVM with 13 predictor variables. This makes sense because we take weighted bootstrap samples of training cases based on which training cases are "most near" the test case we consider. Using the `population` and `construction_year` variables in the dissimilarity function in Step 1 of the algorithm outlined by Zhou (2014) will give much better selection probabilities in Step 3. Using information about how far the test cases are with regard to the variables that specified the split for the corner will be very informative of which training cases in the corner are nearest the test case.
 
 $\quad$ When it comes to choosing a single classifier to implement in a business application, such as the motivating problem from Company X, the results from ASSC algorithm are very attractive. It has many benefits and can be used in combination with simple fundamental methods. Unfortunately, since this algorithm is so computationally expensive it would not serve a company that needs to classify hundreds of thousands of transactions in a single month very well. If time and resources aren't an issue ASSC or something similar seems to be the best course of action. Otherwise logistic regression does an okay job as far as extrapolating with parametric methods goes.
+
 
 
 ## Future Work  
@@ -1308,7 +1310,7 @@ $x_{15}$ = construction\_year  \newline
 
 ## References  
 
-
+The largest advantages of implementing a logistic regression model are interpretability and computational convenience.
 
 
 
